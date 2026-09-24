@@ -1,0 +1,438 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root, [data-theme="default-dark"] {
+  --color-bg: #222222;
+  --color-card: #2a2a2a;
+  --color-card-secondary: #313131;
+  --color-border: #3b3b3b;
+  --color-accent: #80C050;
+  --color-accent-hover: #93d35e;
+  --color-accent-muted: rgba(128, 192, 80, 0.15);
+  --color-text: #E3E3E3;
+  --color-text-muted: #8F8F8F;
+  --color-text-dim: #5A5A5A;
+  --color-wrong: #E74C3C;
+  --color-wrong-bg: rgba(231, 76, 60, 0.18);
+  --color-correct: #80C050;
+  --color-highlight: #3E3E3E;
+}
+
+[data-theme="nordic"] {
+  --color-bg: #2E3440;
+  --color-card: #353B49;
+  --color-card-secondary: #3E4557;
+  --color-border: #485063;
+  --color-accent: #88C0D0;
+  --color-accent-hover: #97C6D6;
+  --color-accent-muted: rgba(136, 192, 208, 0.14);
+  --color-text: #E6E9F0;
+  --color-text-muted: #AEB8CC;
+  --color-text-dim: #6F7A94;
+  --color-wrong: #BF616A;
+  --color-wrong-bg: rgba(191, 97, 106, 0.18);
+  --color-correct: #A3BE8C;
+  --color-highlight: #3E4557;
+}
+
+[data-theme="ember"] {
+  --color-bg: #262220;
+  --color-card: #2F2B27;
+  --color-card-secondary: #383331;
+  --color-border: #443F3A;
+  --color-accent: #D9A45B;
+  --color-accent-hover: #E7B878;
+  --color-accent-muted: rgba(217, 164, 91, 0.15);
+  --color-text: #ECE6DB;
+  --color-text-muted: #A69C8C;
+  --color-text-dim: #756D5F;
+  --color-wrong: #D27060;
+  --color-wrong-bg: rgba(210, 112, 96, 0.18);
+  --color-correct: #A9B665;
+  --color-highlight: #3A3531;
+}
+
+[data-theme="default-light"] {
+  --color-bg: #F4F5F7;
+  --color-card: #FFFFFF;
+  --color-card-secondary: #ECEDEF;
+  --color-border: #DEE0E4;
+  --color-accent: #489920;
+  --color-accent-hover: #55AC2B;
+  --color-accent-muted: rgba(72, 153, 32, 0.14);
+  --color-text: #1F2937;
+  --color-text-muted: #6B7280;
+  --color-text-dim: #9AA1AC;
+  --color-wrong: #DC2626;
+  --color-wrong-bg: rgba(220, 38, 38, 0.12);
+  --color-correct: #16A34A;
+  --color-highlight: #E9EBEF;
+}
+
+[data-theme="classic"] {
+  --color-bg: #EFF2F6;
+  --color-card: #FFFFFF;
+  --color-card-secondary: #E3E9F0;
+  --color-border: #D3DCE6;
+  --color-accent: #2563EB;
+  --color-accent-hover: #3B82F6;
+  --color-accent-muted: rgba(37, 99, 235, 0.14);
+  --color-text: #1E293B;
+  --color-text-muted: #64748B;
+  --color-text-dim: #93A1B5;
+  --color-wrong: #DC2626;
+  --color-wrong-bg: rgba(220, 38, 38, 0.12);
+  --color-correct: #2563EB;
+  --color-highlight: #DCE7F8;
+}
+
+[data-theme="serene"] {
+  --color-bg: #F4F6F3;
+  --color-card: #FFFFFF;
+  --color-card-secondary: #EAEFEA;
+  --color-border: #DBE2DA;
+  --color-accent: #467B68;
+  --color-accent-hover: #5A927E;
+  --color-accent-muted: rgba(70, 123, 104, 0.15);
+  --color-text: #24322B;
+  --color-text-muted: #6C7C72;
+  --color-text-dim: #98A69E;
+  --color-wrong: #C25548;
+  --color-wrong-bg: rgba(194, 85, 72, 0.12);
+  --color-correct: #467B68;
+  --color-highlight: #E4EBE4;
+}
+
+[data-theme="parchment"] {
+  --color-bg: #F6F1E6;
+  --color-card: #FFFDF8;
+  --color-card-secondary: #EFE9DA;
+  --color-border: #E1D8C4;
+  --color-accent: #9C6B3C;
+  --color-accent-hover: #B37F51;
+  --color-accent-muted: rgba(156, 107, 60, 0.15);
+  --color-text: #302B22;
+  --color-text-muted: #837A67;
+  --color-text-dim: #A69C87;
+  --color-wrong: #B34E3F;
+  --color-wrong-bg: rgba(179, 78, 63, 0.12);
+  --color-correct: #647F52;
+  --color-highlight: #EDE7D7;
+}
+
+[data-theme="dracula"] {
+  --color-bg: #282A36;
+  --color-card: #343746;
+  --color-card-secondary: #3E4256;
+  --color-border: #4A4E63;
+  --color-accent: #BD93F9;
+  --color-accent-hover: #CFA9FF;
+  --color-accent-muted: rgba(189, 147, 249, 0.15);
+  --color-text: #F8F8F2;
+  --color-text-muted: #A6ACCB;
+  --color-text-dim: #7280A5;
+  --color-wrong: #FF5555;
+  --color-wrong-bg: rgba(255, 85, 85, 0.18);
+  --color-correct: #50FA7B;
+  --color-highlight: #44475A;
+}
+
+html, body {
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent);
+}
+
+.caret-pulse {
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.word-line-active {
+  background: var(--color-highlight);
+  border-radius: 6px;
+}
+
+.sr-only-absolute {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Daily Goal ---------- */
+
+.goal-ring-enter {
+  /* 'backwards' so Tailwind hover transforms still work after the intro */
+  animation: goalIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+@keyframes goalIn {
+  0% { opacity: 0; transform: translateY(-50%) scale(0.6); }
+  100% { opacity: 1; transform: translateY(-50%) scale(1); }
+}
+
+.goal-ring-arc {
+  transition: stroke-dashoffset 0.4s linear, stroke 0.4s ease;
+}
+
+.animate-goal-pop {
+  animation: goalPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes goalPop {
+  0% { opacity: 0; transform: scale(0.88) translateY(8px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.victory-glow {
+  box-shadow: 0 0 60px color-mix(in srgb, var(--color-correct) 25%, transparent), 0 0 120px color-mix(in srgb, var(--color-correct) 12%, transparent), 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.victory-text-glow {
+  text-shadow: 0 0 18px color-mix(in srgb, var(--color-correct) 45%, transparent);
+}
+
+.victory-icon-pop {
+  animation: iconPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+}
+
+@keyframes iconPop {
+  0% { opacity: 0; transform: scale(0.3) rotate(-14deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------- Virtual Keyboard ---------- */
+
+.vk-key-cap {
+  fill: var(--color-card-secondary);
+  stroke: var(--color-border);
+  stroke-width: 0.035;
+  /* Transform is driven per-frame by the finger-curl spring in JS — a CSS
+     transform transition here would lag a frame behind and cause jitter. */
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+.vk-key-label,
+.vk-key-sub {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  pointer-events: none;
+  transition: fill 0.15s ease;
+}
+.vk-key-label { fill: var(--color-text-muted); }
+.vk-key-sub { fill: var(--color-text-dim); }
+.vk-home-bar { fill: var(--color-text-dim); opacity: 0.45; }
+.vk-halo { fill: var(--color-accent); opacity: 0.1; animation: vkPulse 1.6s ease-in-out infinite; }
+
+.vk-target .vk-key-cap { stroke: var(--color-accent); fill: var(--color-accent-muted); }
+.vk-target .vk-key-label,
+.vk-target .vk-key-sub { fill: var(--color-accent); }
+.vk-pressed .vk-key-cap {
+  transform: translateY(0.09px);
+  fill: var(--color-accent);
+  fill-opacity: 0.45;
+  stroke: var(--color-accent);
+}
+.vk-err .vk-key-cap { fill: var(--color-wrong); fill-opacity: 0.55; stroke: var(--color-wrong); }
+.vk-err .vk-key-label { fill: var(--color-wrong); }
+
+/* Hand motion is owned entirely by the JS spring — NO CSS transform
+   transitions here: they re-target on every spring frame and cause a
+   pre-press shiver. */
+
+/* Radiograph hands: bright ivory bones inside a visible flesh halo — the
+   soft-tissue silhouette is clearly darker/brighter than the film around it,
+   exactly like the reference plate. No layer-wide glow: the only light
+   source is the accent glow on the finger guiding you to the next key. */
+.vk-hands { filter: none; }
+.vk-svg { --vk-bone: var(--color-text); --vk-skin: var(--color-text); }
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+  .vk-svg {
+    --vk-bone: color-mix(in srgb, var(--color-text) 68%, #f4ead0);
+  }
+}
+
+/* Soft tissue: the ghostly flesh edge that surrounds the bones on a film */
+.vk-tissue {
+  fill: var(--vk-skin);
+  fill-opacity: 0.13;
+  stroke: var(--vk-skin);
+  stroke-opacity: 0.24;
+  stroke-width: 0.06;
+}
+
+/* The bones: solid, bright, slightly warm — exactly like a radiograph */
+.vk-bone { will-change: transform; }
+.vk-bone-shape {
+  fill: var(--vk-bone);
+  fill-opacity: 0.78;
+  stroke: var(--vk-bone);
+  stroke-opacity: 0.95;
+  stroke-width: 0.014;
+}
+.vk-condyle {
+  fill: url(#vkBulb);
+  stroke: var(--vk-bone);
+  stroke-opacity: 0.8;
+  stroke-width: 0.012;
+}
+
+/* Film grain: mottled density variation inside the bone shafts. A second
+   copy of the bone path filled with a speckle pattern — dark pits plus a
+   few bright flecks — very low opacity so it reads as texture, not noise.
+   Brighter on dark themes where the plate look needs more contrast. */
+.vk-bone-grain {
+  fill: url(#vkSpeckle);
+  stroke: none;
+  opacity: 0.16;
+}
+.vk-speck { fill: var(--color-bg); opacity: 0.5; }
+.vk-speck-hi { fill: var(--vk-bone); opacity: 0.55; }
+[data-theme="default-dark"], [data-theme="dracula"],
+[data-theme="nordic"], [data-theme="ember"] {
+  .vk-bone-grain { opacity: 0.22; }
+}
+.vk-carpal {
+  fill: url(#vkBulb);
+  stroke: var(--vk-bone);
+  stroke-opacity: 0.75;
+  stroke-width: 0.012;
+}
+
+/* Optional per-finger color zones */
+.vk-zones .vk-bone-shape,
+.vk-zones .vk-condyle,
+.vk-zones .vk-carpal {
+  fill: var(--finger-color, var(--vk-bone));
+  stroke: var(--finger-color, var(--vk-bone));
+}
+.vk-zones .vk-bone-shape { fill-opacity: 0.3; }
+
+/* The finger guiding you to the next key is tinted in the accent color.
+   No drop-shadow: the hands are fully glow-free — color alone marks it. */
+.vk-finger-target .vk-bone-shape,
+.vk-finger-target .vk-condyle { fill: var(--color-accent); stroke: var(--color-accent); }
+.vk-finger-target .vk-bone-shape { fill-opacity: 0.34; stroke-opacity: 0.8; }
+.vk-finger-target .vk-condyle { fill-opacity: 0.45; stroke-opacity: 0.9; }
+
+/* Finger "click" while a key is physically pressed */
+.vk-finger-pressed .vk-bone-shape { fill-opacity: 0.55; }
+.vk-finger-pressed .vk-condyle { fill-opacity: 0.6; }
+
+/* Whole-hand dip on every keystroke, like weight going into the key */
+.vk-dip-a { animation: vkDipA 0.14s ease-out; }
+.vk-dip-b { animation: vkDipB 0.14s ease-out; }
+@keyframes vkDipA {
+  0% { transform: translateY(0); }
+  45% { transform: translateY(0.07px); }
+  100% { transform: translateY(0); }
+}
+@keyframes vkDipB {
+  0% { transform: translateY(0); }
+  45% { transform: translateY(0.07px); }
+  100% { transform: translateY(0); }
+}
+
+/* Gentle idle breathing so the hands feel alive */
+.vk-breathe { animation: vkBreathe 4.5s ease-in-out infinite; }
+@keyframes vkBreathe {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.04px); }
+}
+
+/* Translucent "x-ray" echo of highlighted keys, drawn above the hands
+   so the key and its label stay clearly visible through the bones. */
+.vk-echo-cap {
+  fill: var(--color-accent);
+  fill-opacity: 0.16;
+  stroke: var(--color-accent);
+  stroke-opacity: 0.75;
+  stroke-width: 0.045;
+}
+.vk-echo .vk-key-label,
+.vk-echo .vk-key-sub { fill: var(--color-accent); }
+.vk-echo-halo { fill: var(--color-accent); opacity: 0.1; animation: vkPulse 1.6s ease-in-out infinite; }
+
+/* Error jolt: a short, tight head-shake — only plays on a wrong key, and the
+   keyed <g> remount guarantees it restarts fresh every time. */
+.vk-shake-a { animation: vkShakeA 0.24s ease-out 1; }
+.vk-shake-b { animation: vkShakeB 0.24s ease-out 1; }
+
+@keyframes vkPulse {
+  0%, 100% { opacity: 0.08; }
+  50% { opacity: 0.28; }
+}
+
+@keyframes vkShakeA {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(0.11px); }
+  50% { transform: translateX(-0.09px); }
+  75% { transform: translateX(0.05px); }
+}
+
+@keyframes vkShakeB {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-0.09px); }
+  50% { transform: translateX(0.11px); }
+  75% { transform: translateX(-0.05px); }
+}
+
+/* Mini toggle switch used by the Keyboard Settings popover */
+.vk-switch {
+  width: 30px;
+  height: 17px;
+  border-radius: 999px;
+  background: var(--color-border);
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.18s ease;
+}
+.vk-switch.on { background: var(--color-accent); }
+.vk-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--color-card);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.18s ease;
+}
+.vk-switch.on .vk-knob { transform: translateX(13px); background: #ffffff; }
