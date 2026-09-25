@@ -24,6 +24,9 @@ export function App() {
   const [lastResult, setLastResult] = useState<TestRecord | null>(null);
   const [lastHistoryPoints, setLastHistoryPoints] = useState<KeystrokePoint[]>([]);
   const [customText, setCustomText] = useState('');
+  // True while the user is in Custom Mode — either filling the custom form or
+  // typing a launched custom-text test. Clicking Custom again reverts to normal.
+  const [customActive, setCustomActive] = useState(false);
   const [isModesDrawerOpen, setIsModesDrawerOpen] = useState(false);
   const [isThemeDrawerOpen, setIsThemeDrawerOpen] = useState(false);
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
@@ -32,7 +35,7 @@ export function App() {
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [backspaceLocked, setBackspaceLocked] = useState(false);
   const blocked = isModesDrawerOpen || isThemeDrawerOpen || isLanguageModalOpen || isAuthModalOpen || isGoalModalOpen;
-  const testMode = customText ? 'custom' : 'typing-test';
+  const testMode = customActive && customText ? 'custom' : 'typing-test';
   const testInProgress = currentMode === 'typing-test' && !lastResult;
   const dailyGoal = useDailyGoal({ testInProgress, soundEnabled: settings.websiteSfx });
 
@@ -69,9 +72,25 @@ export function App() {
 
   const handleSelectMode = useCallback((mode: AppMode) => {
     setCustomText('');
+    setCustomActive(mode === 'custom');
     setCurrentMode(mode);
     setIsModesDrawerOpen(false);
     handleRestart();
+  }, [handleRestart]);
+
+  const handleToggleCustom = useCallback(() => {
+    setCustomActive((wasActive) => {
+      if (wasActive) {
+        // Revert: clear the custom text and go back to the normal typing test.
+        setCustomText('');
+        setCurrentMode('typing-test');
+        handleRestart();
+        return false;
+      }
+      setCurrentMode('custom');
+      handleRestart();
+      return true;
+    });
   }, [handleRestart]);
 
   useEffect(() => {
@@ -113,7 +132,7 @@ export function App() {
     <div className="min-h-screen flex flex-col justify-between bg-darkbg text-bodytext font-sans antialiased transition-colors duration-200">
       <div>
         <Navbar onOpenModes={() => setIsModesDrawerOpen(true)} onOpenTheme={() => setIsThemeDrawerOpen(true)} onOpenLanguage={() => setIsLanguageModalOpen(true)} onOpenAuth={() => setIsAuthModalOpen(true)} onOpenGoal={() => setIsGoalModalOpen(true)} goalActive={dailyGoal.goal !== null} goalCompleted={dailyGoal.goal?.completed === true} profile={profile} currentModeName={modeTitles[currentMode === 'typing-test' ? testMode : currentMode]} />
-        <SettingsBar isOpen={isSettingsBarOpen} settings={settings} onUpdateSettings={handleUpdateSettings} onOpenCustomModal={() => handleSelectMode('custom')} testLocked={backspaceLocked} />
+        <SettingsBar isOpen={isSettingsBarOpen} settings={settings} onUpdateSettings={handleUpdateSettings} onToggleCustom={handleToggleCustom} customActive={customActive} testLocked={backspaceLocked} />
         <main className="max-w-6xl mx-auto px-4 pt-4 pb-10 w-full">
           {lastResult ? (
             <ResultsCard record={lastResult} historyPoints={lastHistoryPoints} onRestart={handleRestart} />
@@ -123,6 +142,7 @@ export function App() {
               {currentMode === 'text-practice' && <TextPracticeMode settings={settings} />}
               {currentMode === 'custom' && <CustomMode onStartCustomTest={(text, duration) => {
                 setCustomText(text.trim());
+                setCustomActive(true); // stays in Custom Mode while the launched test runs
                 handleUpdateSettings({ duration });
                 setCurrentMode('typing-test');
                 handleRestart();
@@ -131,8 +151,7 @@ export function App() {
           )}
         </main>
       </div>
-      <div id="virtual-keyboard-root" className="w-full flex justify-center px-4 pb-6" />
-      <ModesDrawer isOpen={isModesDrawerOpen} onClose={() => setIsModesDrawerOpen(false)} currentMode={currentMode === 'typing-test' ? testMode : currentMode} onSelectMode={handleSelectMode} />
+      <div id="virtual-keyboard-root" className="w-full flex justify-center px-4 pb-6" />        <ModesDrawer isOpen={isModesDrawerOpen} onClose={() => setIsModesDrawerOpen(false)} currentMode={currentMode === 'typing-test' ? testMode : currentMode} onSelectMode={handleSelectMode} />
       <ThemeDrawer isOpen={isThemeDrawerOpen} onClose={() => setIsThemeDrawerOpen(false)} currentTheme={settings.theme} onSelectTheme={handleSelectTheme} />
       <LanguageModal isOpen={isLanguageModalOpen} onClose={() => setIsLanguageModalOpen(false)} currentLanguage={settings.language} onSelectLanguage={handleSelectLanguage} />
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} profile={profile} onUpdateProfile={setProfile} />

@@ -49,6 +49,10 @@ function createSession(settings: UserSettings, customText?: string) {
      elapsed: 0,
      idleWarning: false,
      history: [] as KeystrokePoint[],
+     charStats: { correct: 0, incorrect: 0, extra: 0, missed: 0 },
+     lastErrorTotal: 0,
+     burstTotal: 0,
+     lastSampleAt: 0,
    };
  }
 
@@ -125,8 +129,26 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
     session.idleWarning = false;
     const { settings: currentSettings, onFinishTest: complete, mode: currentMode } = latestRef.current;
     const metrics = getMetrics(session, session.elapsed);
-    const point = { second: session.elapsed, wpm: metrics.wpm, rawWpm: metrics.rawWpm, errors: session.wrongAttempts };
+    const sliceErrors = Math.max(0, session.wrongAttempts - session.lastErrorTotal);
+    session.lastErrorTotal = session.wrongAttempts;
+    // Burst: per-minute rate of the keystrokes typed since the last sample.
+    const finishNow = session.startedAt + session.elapsed * 1000;
+    const windowSec = session.lastSampleAt > 0 ? Math.max(0.2, (finishNow - session.lastSampleAt) / 1000) : Math.min(session.elapsed, 1);
+    const finalBurst = session.burstTotal > 0 ? Math.round((session.burstTotal / windowSec / 5) * 60) : session.history.at(-1)?.burst ?? 0;
+    const point = { second: session.elapsed, wpm: metrics.wpm, rawWpm: metrics.rawWpm, errors: sliceErrors, burst: finalBurst };
     session.history = [...session.history.filter((item) => item.second < point.second), point];
+    // Missed characters: the untyped tail of an unfinished word that already contains an error.
+    const partialTarget = Array.from(session.words[session.index]?.word ?? '');
+    const partialPerfect = session.input.length <= partialTarget.length && Array.from(session.input).every((char, index) => char === partialTarget[index]);
+    if (session.input.length > 0 && !partialPerfect) session.charStats.missed += Math.max(0, partialTarget.length - session.input.length);
+    // Consistency: 100 minus the coefficient of variation of the per-second net speeds.
+    const samples = session.history.map((item) => item.wpm).filter((value) => value > 0);
+    let consistency = 100;
+    if (samples.length >= 2) {
+      const mean = samples.reduce((sum, value) => sum + value, 0) / samples.length;
+      const variance = samples.reduce((sum, value) => sum + (value - mean) ** 2, 0) / samples.length;
+      consistency = Math.max(0, Math.min(100, Math.round((1 - Math.sqrt(variance) / mean) * 100)));
+    }
     const partial = session.input.length > 0;
     const matches = partial && session.input === session.words[session.index]?.word;
     const record: TestRecord = {
@@ -140,6 +162,8 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
       difficulty: currentSettings.difficulty,
       language: currentSettings.language,
       duration: Math.round(session.elapsed * 10) / 10,
+      charStats: { ...session.charStats },
+      consistency,
     };
     publish();
     if (currentSettings.websiteSfx) soundManager.playFinishSound();
@@ -171,7 +195,15 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
       const last = session.history.at(-1);
       if (elapsed >= 1 && (!last || Math.floor(elapsed) > Math.floor(last.second))) {
         const metrics = getMetrics(session, elapsed);
-        session.history.push({ second: elapsed, wpm: metrics.wpm, rawWpm: metrics.rawWpm, errors: session.wrongAttempts });
+        const sliceErrors = Math.max(0, session.wrongAttempts - session.lastErrorTotal);
+        session.lastErrorTotal = session.wrongAttempts;
+        // Burst: raw speed of the slice since the previous sample (0 while idle).
+        const nowMs = session.startedAt + elapsed * 1000;
+        const windowSec = session.lastSampleAt > 0 ? Math.max(0.2, (nowMs - session.lastSampleAt) / 1000) : Math.min(elapsed, 1);
+        const burst = session.burstTotal > 0 ? Math.round((session.burstTotal / windowSec / 5) * 60) : 0;
+        session.history.push({ second: elapsed, wpm: metrics.wpm, rawWpm: metrics.rawWpm, errors: sliceErrors, burst });
+        session.burstTotal = 0;
+        session.lastSampleAt = nowMs;
       }
       publish();
     }, 1000);
@@ -204,7 +236,7 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
         onUpdateSettings({ showTimer: !settings.showTimer });
       } else if (event.key === 'F3') {
         event.preventDefault();
-        onUpdateSettings({ difficulty: settings.difficulty === 'normal' ? 'advanced' : 'normal' });
+        onUpdateSettings({ difficulty: settings.difficulty === 'easy' ? 'medium' : settings.difficulty === 'medium' ? 'hard' : 'easy' });
       } else if (event.key === 'Tab' && !event.shiftKey && (target === document.body || target === canvasRef.current)) {
         event.preventDefault();
         inputRef.current?.focus({ preventScroll: true });
@@ -275,6 +307,7 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
     if (session.startedAt === null && inserted.length === 0) return;
     if (session.startedAt === null) {
       session.startedAt = now;
+      session.lastSampleAt = now;
       onTestActiveChange?.(true);
     }
     const wasIdle = now - session.lastActivity > 5000;
@@ -290,9 +323,15 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
     let lastChar = '';
     let lastCorrect = false;
     for (const char of Array.from(inserted)) {
-      const correct = char === (targetChars[position] ?? (position === targetChars.length ? ' ' : ''));
+      const isExtra = position > targetChars.length;
+      const expected = position === targetChars.length ? ' ' : targetChars[position] ?? '';
+      const correct = !isExtra && char === expected;
+      if (isExtra) session.charStats.extra++;
+      else if (correct) session.charStats.correct++;
+      else session.charStats.incorrect++;
       if (correct) session.correctAttempts++;
       else session.wrongAttempts++;
+      session.burstTotal++;
       lastChar = char;
       lastCorrect = correct;
       position++;
@@ -326,9 +365,12 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
         if (settings.websiteSfx) soundManager.playWordSuccess();
       } else {
         session.wrongWords++;
+        // MonkeyType: characters of a failed word that were never typed count as missed.
+        session.charStats.missed += Math.max(0, targetChars.length - typed.length);
         if (settings.websiteSfx) soundManager.playWordWrong();
       }
       session.totalCharacters += typed.length + 1;
+      session.burstTotal++; // the space keypress belongs to the burst window
       session.words[session.index] = { word: target, typedText: session.input };
       session.index++;
       session.input = '';
@@ -367,7 +409,7 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
   const timeLeft = Math.max(0, Math.ceil(settings.duration - view.elapsed));
   const metrics = getMetrics(view, view.elapsed);
   const fontClasses = { xs: 'text-base leading-relaxed', sm: 'text-lg leading-relaxed', md: 'text-xl md:text-2xl leading-loose', lg: 'text-2xl md:text-3xl leading-loose', xl: 'text-3xl md:text-4xl leading-loose' };
-  const chartPoints = [{ second: 0, wpm: 0, rawWpm: 0, errors: 0 }, ...view.history];
+  const chartPoints = [{ second: 0, wpm: 0, rawWpm: 0, errors: 0, burst: 0 }, ...view.history];
   const maximum = Math.max(30, ...chartPoints.map((point) => point.rawWpm));
   const chartPath = (field: 'wpm' | 'rawWpm') => chartPoints.map((point, index) => `${index ? 'L' : 'M'} ${10 + point.second / Math.max(1, view.elapsed) * 580} ${110 - point[field] / maximum * 100}`).join(' ');
   const buttonClass = 'p-1.5 bg-darkcard hover:bg-darkbg text-mutedtext hover:text-accent rounded-lg border border-darkborder hover:border-accent transition-all shadow-sm';
@@ -381,7 +423,7 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
         </button>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center bg-darkcard p-0.5 rounded-lg border border-darkborder text-xs font-semibold">
-            {(['normal', 'advanced'] as const).map((difficulty) => (
+            {(['easy', 'medium', 'hard'] as const).map((difficulty) => (
               <button key={difficulty} onClick={() => onUpdateSettings({ difficulty })} className={`px-3 py-1 rounded-md capitalize ${settings.difficulty === difficulty ? 'bg-darkbg text-accent border-b-2 border-accent font-bold' : 'text-mutedtext hover:text-bodytext'}`}>{difficulty}</button>
             ))}
           </div>

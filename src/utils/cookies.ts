@@ -10,7 +10,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   theme: 'default-dark', keyboardSound: 'standard', keyboardVolume: 0.7, websiteSfx: true, backspaceEnabled: true,
   fontSize: 'md', duration: 60,
   showTimer: true, showChart: true, showCaret: true,
-  difficulty: 'normal', language: 'english', smoothScroll: true,
+  difficulty: 'easy', language: 'english', smoothScroll: true,
   showKeyboard: true, showHands: true, showFingerZones: false,
 };
 
@@ -80,7 +80,7 @@ export function getSettingsCookie(): UserSettings {
     theme: ['default-dark', 'nordic', 'ember', 'dracula', 'default-light', 'classic', 'serene', 'parchment'],
     keyboardSound: ['standard', 'mute'],
     fontSize: ['xs', 'sm', 'md', 'lg', 'xl'],
-    difficulty: ['normal', 'advanced'],
+    difficulty: ['easy', 'medium', 'hard'],
     language: ['english', 'english-advanced', 'spanish', 'french', 'german', 'italian', 'portuguese', 'russian', 'code'],
   };
   for (const key of Object.keys(allowed) as Array<keyof typeof allowed>) {

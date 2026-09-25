@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FC } from 'react';
 import confetti from 'canvas-confetti';
-import { RotateCcw, Share2, Check, TrendingUp } from 'lucide-react';
+import { RotateCcw, Share2, Check, ChartLine } from 'lucide-react';
 import type { TestRecord, KeystrokePoint } from '../types';
 
 interface ResultsCardProps {
@@ -11,9 +11,21 @@ interface ResultsCardProps {
   showChart?: boolean;
 }
 
+const CHART_W = 760;
+const CHART_H = 220;
+const PAD = { top: 14, right: 46, bottom: 26, left: 46 };
+
+interface Hover {
+  index: number;
+  x: number;
+  y: number;
+}
+
 export const ResultsCard: FC<ResultsCardProps> = ({ record, historyPoints, onRestart }) => {
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState('');
+  const [hover, setHover] = useState<Hover | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
     if (record.wpm >= 40) {
@@ -28,10 +40,12 @@ export const ResultsCard: FC<ResultsCardProps> = ({ record, historyPoints, onRes
   }, [copied]);
 
   const handleShare = async () => {
+    const chars = record.charStats;
     const text = `GorillaType Result:
 WPM: ${record.wpm} (${record.rawWpm} Raw)
 Accuracy: ${record.accuracy}%
-Keystrokes: (${record.keystrokes.correct} correct | ${record.keystrokes.wrong} wrong) ${record.keystrokes.total} total
+Consistency: ${record.consistency ?? '—'}%
+Keystrokes: (${record.keystrokes.correct} correct | ${record.keystrokes.wrong} wrong) ${record.keystrokes.total} total${chars ? `\nCharacters: ${chars.correct}/${chars.incorrect}/${chars.extra}/${chars.missed}` : ''}
 Duration: ${record.duration}s
 Mode: ${record.mode} | Language: ${record.language} | Difficulty: ${record.difficulty}`;
     setCopied(false);
@@ -44,67 +58,214 @@ Mode: ${record.mode} | Language: ${record.language} | Difficulty: ${record.diffi
     }
   };
 
-  const renderChart = () => {
-    if (historyPoints.length < 2) return null;
-    const maxWpm = Math.max(...historyPoints.map((p) => Math.max(p.wpm, p.rawWpm)), 30) + 10;
-    const width = 600;
-    const height = 140;
-    const padding = 20;
-    const points = historyPoints.map((p, idx) => ({
-      ...p,
-      x: padding + (idx / (historyPoints.length - 1)) * (width - padding * 2),
-      y: height - padding - (p.wpm / maxWpm) * (height - padding * 2),
-      rawY: height - padding - (p.rawWpm / maxWpm) * (height - padding * 2),
-    }));
-    const pathWpm = points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-    const pathRaw = points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.rawY}`).join(' ');
-    return (
-      <div className="w-full bg-darkbg p-4 rounded-xl border border-darkborder mt-5">
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-mutedtext mb-2">
-          <span className="flex items-center gap-2 font-semibold uppercase tracking-wider text-bodytext"><TrendingUp className="w-3.5 h-3.5 text-accent" />Speed over time</span>
-          <div className="flex gap-3"><span className="text-accent">Net WPM</span><span>Raw WPM (dashed)</span><span className="text-wrongred">Errors</span></div>
-        </div>
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-[150px]" role="img" aria-label="Recorded net and raw typing speed over time; red points mark errors">
-          {[padding, height / 2, height - padding].map((y) => <line key={y} x1={padding} y1={y} x2={width - padding} y2={y} stroke="var(--color-border)" strokeWidth="1" strokeDasharray="3 3" />)}
-          <path d={pathRaw} fill="none" stroke="var(--color-text-muted)" strokeWidth="2" strokeDasharray="4 2" />
-          <path d={pathWpm} fill="none" stroke="var(--color-accent)" strokeWidth="3" strokeLinecap="round" />
-          {points.map((p, idx) => <circle key={idx} cx={p.x} cy={p.y} r={p.errors > 0 ? 6 : 3} fill={p.errors > 0 ? 'var(--color-wrong)' : 'var(--color-accent)'} />)}
-        </svg>
-      </div>
-    );
+  // Prepend the mandatory (0,0) starting point, like MonkeyType.
+  const series = useMemo(() => {
+    const points: KeystrokePoint[] = [{ second: 0, wpm: 0, rawWpm: 0, errors: 0, burst: 0 }, ...historyPoints];
+    const xMax = Math.max(points.at(-1)?.second ?? 1, 1);
+    const yMaxRaw = Math.max(...points.map((p) => Math.max(p.rawWpm, p.burst, p.wpm)), 30);
+    const yMax = Math.ceil((yMaxRaw + 10) / 10) * 10;
+    const toX = (second: number) => PAD.left + (second / xMax) * (CHART_W - PAD.left - PAD.right);
+    const toY = (wpm: number) => CHART_H - PAD.bottom - (wpm / yMax) * (CHART_H - PAD.top - PAD.bottom);
+    const smooth = (field: 'wpm' | 'rawWpm' | 'burst') => {
+      const pts = points.map((p) => ({ x: toX(p.second), y: toY(p[field]) }));
+      if (pts.length < 3) return pts.map((p, i) => `${i ? 'L' : 'M'} ${p.x} ${p.y}`).join(' ');
+      let d = `M ${pts[0].x} ${pts[0].y}`;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[Math.max(0, i - 1)];
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const p3 = pts[Math.min(pts.length - 1, i + 2)];
+        const c1x = p1.x + (p2.x - p0.x) / 6;
+        const c1y = p1.y + (p2.y - p0.y) / 6;
+        const c2x = p2.x - (p3.x - p1.x) / 6;
+        const c2y = p2.y - (p3.y - p1.y) / 6;
+        d += ` C ${c1x.toFixed(2)} ${c1y.toFixed(2)}, ${c2x.toFixed(2)} ${c2y.toFixed(2)}, ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+      }
+      return d;
+    };
+    return { points, xMax, yMax, toX, toY, smooth };
+  }, [historyPoints]);
+
+  const onMove = (event: React.MouseEvent<SVGSVGElement>) => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * CHART_W;
+    const { points, toX } = series;
+    let best = 0;
+    let bestDist = Infinity;
+    points.forEach((p, i) => {
+      const dist = Math.abs(toX(p.second) - x);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = i;
+      }
+    });
+    setHover({ index: best, x: series.toX(points[best].second), y: series.toY(points[best].wpm) });
   };
 
+  // Right-side error axis: X markers are positioned by their per-second count.
+  const errMax = Math.max(1, ...series.points.map((p) => p.errors));
+  const toErrY = (count: number) => CHART_H - PAD.bottom - (count / errMax) * (CHART_H - PAD.top - PAD.bottom);
+  const errorMarkers = series.points.map((p, i) => ({ ...p, i })).filter((p) => p.errors > 0);
+  const hasErrors = errorMarkers.length > 0;
+  const hoverPoint = hover ? series.points[hover.index] : null;
+  const chars = record.charStats;
+  const charText = chars ? `${chars.correct}/${chars.incorrect}/${chars.extra}/${chars.missed}` : `${record.keystrokes.correct}/${record.keystrokes.wrong}`;
+
+  const renderChart = () => (
+    <div className="relative w-full" onMouseLeave={() => setHover(null)}>
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+        className="w-full select-none"
+        role="img"
+        aria-label="Words per minute, raw speed, burst speed and errors over time"
+        onMouseMove={onMove}
+      >
+        {/* grid */}
+        {[0, 0.25, 0.5, 0.75, 1].map((fraction) => {
+          const y = CHART_H - PAD.bottom - fraction * (CHART_H - PAD.top - PAD.bottom);
+          const value = Math.round(series.yMax * fraction);
+          return (
+            <g key={fraction}>
+              <line x1={PAD.left} y1={y} x2={CHART_W - PAD.right} y2={y} stroke="var(--color-border)" strokeWidth={fraction === 0 ? 1.5 : 1} opacity={fraction === 0 ? 1 : 0.55} />
+              <text x={PAD.left - 8} y={y + 4} textAnchor="end" fontSize="10" fill="var(--color-text-muted)" className="font-mono">{value}</text>
+            </g>
+          );
+        })}
+        {/* x axis ticks */}
+        {series.points.map((p, i) => {
+          const step = Math.max(1, Math.ceil(series.points.length / 16));
+          if (Math.round(p.second) % step !== 0) return null;
+          return <text key={`x${i}`} x={series.toX(p.second)} y={CHART_H - 8} textAnchor="middle" fontSize="10" fill="var(--color-text-muted)" className="font-mono">{Math.round(p.second)}</text>;
+        })}
+        <text x={12} y={CHART_H / 2} fontSize="10" fill="var(--color-text-muted)" transform={`rotate(-90 12 ${CHART_H / 2})`} textAnchor="middle" className="font-mono">words per minute</text>
+        {/* right error axis (only when errors happened) */}
+        {hasErrors && (
+          <g>
+            {Array.from({ length: errMax + 1 }, (_, count) => (
+              <text key={`err${count}`} x={CHART_W - PAD.right + 12} y={toErrY(count) + 4} fontSize="10" fill="var(--color-text-muted)" className="font-mono">{count}</text>
+            ))}
+            <text x={CHART_W - 8} y={CHART_H / 2} fontSize="10" fill="var(--color-text-muted)" transform={`rotate(90 ${CHART_W - 8} ${CHART_H / 2})`} textAnchor="middle" className="font-mono">Errors</text>
+          </g>
+        )}
+
+        {/* burst line (thin, muted, with data dots like the reference) */}
+        <path d={series.smooth('burst')} fill="none" stroke="var(--color-text-dim)" strokeWidth="1.5" strokeLinecap="round" opacity="0.9" />
+        {series.points.map((p, i) => (
+          <circle key={`bd${i}`} cx={series.toX(p.second)} cy={series.toY(p.burst)} r={2} fill="var(--color-text-dim)" />
+        ))}
+        {/* raw line (dashed) */}
+        <path d={series.smooth('rawWpm')} fill="none" stroke="var(--color-accent)" strokeWidth="2" strokeDasharray="7 5" strokeLinecap="round" opacity="0.75" />
+        {/* wpm line (hero) */}
+        <path d={series.smooth('wpm')} fill="none" stroke="var(--color-accent)" strokeWidth="2.5" strokeLinecap="round" />
+        {/* error markers: x crosses positioned on the error axis */}
+        {errorMarkers.map((p) => {
+          const x = series.toX(p.second);
+          const y = toErrY(p.errors);
+          return (
+            <g key={`err${p.i}`} stroke="var(--color-wrong)" strokeWidth="2" strokeLinecap="round">
+              <line x1={x - 4} y1={y - 4} x2={x + 4} y2={y + 4} />
+              <line x1={x - 4} y1={y + 4} x2={x + 4} y2={y - 4} />
+            </g>
+          );
+        })}
+        {/* hover guide */}
+        {hover && hoverPoint && (
+          <g>
+            <line x1={hover.x} y1={PAD.top} x2={hover.x} y2={CHART_H - PAD.bottom} stroke="var(--color-border)" strokeWidth="1" />
+            <circle cx={hover.x} cy={series.toY(hoverPoint.wpm)} r="4.5" fill="var(--color-accent)" stroke="var(--color-bg)" strokeWidth="2" />
+          </g>
+        )}
+      </svg>
+      {hover && hoverPoint && (
+        <div
+          className="absolute pointer-events-none z-10 px-3 py-2 rounded-lg bg-darkbg border border-darkborder shadow-xl font-mono text-xs leading-relaxed"
+          style={{
+            left: `min(max(0px, ${(hover.x / CHART_W) * 100}% - 60px), calc(100% - 128px))`,
+            top: `${(hover.y / CHART_H) * 100}%`,
+            transform: 'translateY(-110%)',
+          }}
+        >
+          <div className="font-bold text-bodytext mb-1">{Math.round(hoverPoint.second)}</div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-[3px] inline-block" style={{ background: 'var(--color-wrong)' }} />errors: {hoverPoint.errors}</div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-[3px] inline-block" style={{ background: 'var(--color-accent)' }} />wpm: {hoverPoint.wpm}</div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-[3px] inline-block opacity-55" style={{ background: 'var(--color-accent)' }} />raw: {hoverPoint.rawWpm}</div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-[3px] inline-block" style={{ background: 'var(--color-text-dim)' }} />burst: {hoverPoint.burst}</div>
+        </div>
+      )}
+      {/* legend */}
+      <div className="flex items-center justify-end gap-4 text-xs font-mono text-mutedtext mt-1 pr-2">
+        <span className="flex items-center gap-1.5"><ChartLine className="w-3.5 h-3.5" />scale</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block w-5 border-t-2 border-dashed" style={{ borderColor: 'var(--color-accent)' }} />raw</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block w-5 border-t-2" style={{ borderColor: 'var(--color-text-dim)' }} />burst</span>
+        <span className="flex items-center gap-1.5"><span style={{ color: 'var(--color-wrong)' }}>x</span>errors</span>
+      </div>
+    </div>
+  );
+
+  const labelClass = 'text-xs sm:text-sm font-semibold text-mutedtext';
+  const valueClass = 'text-xl sm:text-2xl font-bold text-accent font-mono';
+
   return (
-    <div className="w-full max-w-2xl mx-auto my-6 bg-darkcard border-2 border-darkborder rounded-2xl p-6 sm:p-8 shadow-xl animate-fade-in text-bodytext">
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-6 border-b border-darkborder">
-        <div className="flex items-center gap-5">
-          <div className="w-24 h-24 shrink-0 rounded-2xl bg-darkbg border-2 border-accent flex flex-col items-center justify-center shadow-lg">
-            <span className="text-4xl font-mono font-black text-accent leading-none">{record.wpm}</span>
-            <span className="text-[11px] font-semibold tracking-wider uppercase text-mutedtext mt-1">WPM</span>
-          </div>
+    <div className="w-full max-w-4xl mx-auto my-6 bg-darkcard border border-darkborder rounded-2xl p-6 sm:p-8 shadow-xl animate-fade-in text-bodytext">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(150px,220px)_1fr] gap-6 lg:gap-8">
+        {/* left column: hero stats */}
+        <div className="flex flex-row lg:flex-col items-center lg:items-start justify-center gap-6 lg:gap-2">
           <div>
-            <span className="px-2.5 py-0.5 rounded-full bg-accentmuted text-accent font-bold text-xs uppercase tracking-wide">Test complete</span>
-            <h2 className="text-xl font-bold mt-2">Your speed: {record.wpm} WPM</h2>
-            <p className="text-xs text-mutedtext mt-1">{record.duration}s test • {record.rawWpm} raw WPM</p>
+            <div className="text-mutedtext font-semibold text-lg leading-tight">wpm</div>
+            <div className="text-accent font-mono font-extrabold text-6xl sm:text-7xl leading-none">{record.wpm}</div>
+          </div>
+          <div className="lg:mt-5">
+            <div className="text-mutedtext font-semibold text-lg leading-tight">acc</div>
+            <div className="text-accent font-mono font-extrabold text-4xl sm:text-5xl leading-none">{record.accuracy}%</div>
           </div>
         </div>
-        <button onClick={onRestart} className="flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accenthover text-black font-extrabold rounded-xl shadow-lg active:scale-95 text-sm shrink-0" title="Restart Test"><RotateCcw className="w-4 h-4" />Try Again</button>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
-        <div className="flex items-center justify-between p-3.5 bg-darkbg rounded-xl border border-darkborder">
-          <span className="text-xs text-mutedtext">Keystrokes:</span>
-          <span className="font-mono text-sm font-bold"><span className="text-accent">({record.keystrokes.correct}</span><span className="text-mutedtext"> | </span><span className="text-wrongred">{record.keystrokes.wrong})</span> {record.keystrokes.total}</span>
+        {/* right column: chart */}
+        <div className="min-w-0">
+          {historyPoints.length >= 2 ? renderChart() : (
+            <div className="h-full min-h-[160px] flex items-center justify-center text-sm text-mutedtext font-mono">Not enough data for a graph — run a slightly longer test.</div>
+          )}
         </div>
-        <div className="flex items-center justify-between p-3.5 bg-darkbg rounded-xl border border-darkborder"><span className="text-xs text-mutedtext">Accuracy:</span><span className="font-mono font-bold text-accent">{record.accuracy}%</span></div>
-        <div className="flex items-center justify-between p-3.5 bg-darkbg rounded-xl border border-darkborder"><span className="text-xs text-mutedtext">Correct words:</span><span className="font-mono text-sm font-bold text-accent">{record.correctWords}</span></div>
-        <div className="flex items-center justify-between p-3.5 bg-darkbg rounded-xl border border-darkborder"><span className="text-xs text-mutedtext">Wrong words:</span><span className="font-mono text-sm font-bold text-wrongred">{record.wrongWords}</span></div>
       </div>
-      {historyPoints.length >= 2 && renderChart()}
-      <div className="flex flex-wrap items-center justify-between gap-3 mt-6 pt-4 border-t border-darkborder">
+
+      {/* bottom stat row */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-5 mt-7 pt-6 border-t border-darkborder">
+        <div>
+          <div className={labelClass}>test type</div>
+          <div className={`${valueClass} !text-base sm:!text-lg leading-snug`}>{record.mode === 'custom' ? 'custom' : record.mode === 'text-practice' ? 'practice' : 'time'} {record.duration}s</div>
+          <div className="text-xs text-mutedtext capitalize">{record.language.replace('-', ' ')} · {record.difficulty}</div>
+          {record.accuracy < 75 && <div className="text-xs font-mono text-accent mt-0.5">invalid (accuracy)</div>}
+        </div>
+        <div>
+          <div className={labelClass}>raw</div>
+          <div className={`${valueClass} !text-2xl sm:!text-3xl`}>{record.rawWpm}</div>
+        </div>
+        <div>
+          <div className={labelClass}>characters</div>
+          <div className={`${valueClass} !text-2xl sm:!text-3xl`}>{charText}</div>
+          <div className="text-[11px] text-mutedtext font-mono">correct / incorrect / extra / missed</div>
+        </div>
+        <div>
+          <div className={labelClass}>consistency</div>
+          <div className={`${valueClass} !text-2xl sm:!text-3xl`}>{record.consistency ?? '—'}{record.consistency != null ? '%' : ''}</div>
+        </div>
+        <div>
+          <div className={labelClass}>time</div>
+          <div className={`${valueClass} !text-2xl sm:!text-3xl`}>{record.duration}s</div>
+          <div className="text-[11px] text-mutedtext font-mono">{new Date(record.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} session</div>
+        </div>
+      </div>
+
+      {/* actions */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mt-7 pt-5 border-t border-darkborder">
         <button onClick={handleShare} className="flex items-center gap-2 px-3.5 py-2 bg-darkbg hover:bg-darkborder rounded-lg border border-darkborder text-xs font-medium">
           {copied ? <Check className="w-3.5 h-3.5 text-accent" /> : <Share2 className="w-3.5 h-3.5" />}<span>{copied ? 'Copied to Clipboard!' : 'Copy Result'}</span>
         </button>
-        <span className="text-xs text-mutedtext font-mono">Language: <strong className="text-bodytext capitalize">{record.language}</strong> ({record.difficulty})</span>
+        <button onClick={onRestart} className="flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accenthover text-black font-extrabold rounded-xl shadow-lg active:scale-95 text-sm shrink-0" title="Restart Test (F1)">
+          <RotateCcw className="w-4 h-4" />Next Test
+        </button>
       </div>
       {copyError && <p role="status" className="text-xs text-wrongred mt-3">{copyError}</p>}
     </div>

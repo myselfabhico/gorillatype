@@ -19,6 +19,24 @@ export const ENGLISH_NORMAL_WORDS: string[] = [
   'help', 'line'
 ];
 
+// Hard tier: long, rare, and awkward-to-type words plus heavy punctuation.
+export const ENGLISH_HARD_WORDS: string[] = [
+  'acquaintance', 'bureaucracy', 'conscientious', 'dialectical', 'ephemeral', 'fluorescent', 'grotesque',
+  'hierarchical', 'idiosyncrasy', 'juxtaposition', 'kaleidoscope', 'liquefaction', 'methodical', 'nonchalant',
+  'obfuscation', 'phenomenon', 'quintessential', 'reconnaissance', 'simultaneous', 'threnody', 'ubiquitous',
+  'vernacular', 'welterweight', 'xylophonist', 'zeitgeist', 'archipelago', 'bourgeoisie', 'chiaroscuro',
+  'déjà', 'entrepôt', 'fauxpas', 'grandiloquent', 'heterogeneous', 'iconoclast', 'jurisprudence', 'kerfuffle',
+  'laryngoscope', 'mnemonic', 'nomenclature', 'ophthalmologist', 'perspicacious', 'querulous', 'rambunctious',
+  'surreptitious', 'tautological', 'unprecedented', 'vicissitude', 'warranty', 'xenophobia', 'yachtsman',
+  'zephyr', 'rhythmical', 'larynx', 'sphinx', 'gazebo', 'quixotic', 'onomatopoeia', 'hippopotamus',
+  'threshold', 'wretched', 'squelch', 'wrench', 'sphincter', 'strengths', 'glimpsed', 'jigsawed',
+  'synchronize', 'backslash', 'bracket', 'semicolon', 'hyphenate', 'underscore', 'parenthesis', 'quotation',
+  'exclamation', 'interrobang', 'punctuation', 'typographical', 'keystroke', 'keyboardist', 'stenographer',
+  'shorthand', 'typist', 'stenography', 'chirography', 'paleography', 'calligrapher', 'typographer',
+  'labyrinthine', 'inconsequential', 'uncharacteristically', 'internationalization', 'counterintuitive',
+  'misunderestimate', 'antidisestablishmentarianism', 'honorificabilitudinitatibus'
+];
+
 export const ENGLISH_ADVANCED_WORDS: string[] = [
   'accommodate', 'achievement', 'acquire', 'aggressive', 'amateur', 'apparent', 'argument', 'athlete', 'calendar',
   'category', 'cemetery', 'colleague', 'column', 'committed', 'conscience', 'conscious', 'consensus', 'convenient',
@@ -116,7 +134,10 @@ export function getRandomWords(language: LanguageId, difficulty: DifficultyMode,
   let pool: string[] = ENGLISH_NORMAL_WORDS;
 
   if (language === 'english') {
-    pool = difficulty === 'advanced' ? ENGLISH_ADVANCED_WORDS : ENGLISH_NORMAL_WORDS;
+    // Easy reuses the classic common-word bank; Medium upgrades to the old
+    // advanced vocabulary; Hard mixes a brand-new very-hard word bank with
+    // punctuation decoration below.
+    pool = difficulty === 'easy' ? ENGLISH_NORMAL_WORDS : difficulty === 'hard' ? ENGLISH_HARD_WORDS : ENGLISH_ADVANCED_WORDS;
   } else if (language === 'english-advanced') {
     pool = ENGLISH_ADVANCED_WORDS;
   } else if (language === 'spanish') {
@@ -140,7 +161,27 @@ export function getRandomWords(language: LanguageId, difficulty: DifficultyMode,
     const randomIndex = Math.floor(Math.random() * pool.length);
     let word = pool[randomIndex];
 
-    if (difficulty === 'advanced' && language !== 'code') {
+    if (difficulty === 'hard' && language !== 'code') {
+      // Hard tier: capitalisation, commas, periods, quotes, semicolons, hyphens
+      // and clusters of tricky technical words.
+      const rand = Math.random();
+      if (rand < 0.2) {
+        word = word.charAt(0).toUpperCase() + word.slice(1);
+      } else if (rand < 0.28) {
+        word = word + ',';
+      } else if (rand < 0.35) {
+        word = word + '.';
+      } else if (rand < 0.4) {
+        word = `"${word}"`;
+      } else if (rand < 0.45) {
+        word = word + ';';
+      } else if (rand < 0.5) {
+        word = word.charAt(0).toUpperCase() + word.slice(1) + '-Typist';
+      } else if (rand < 0.55) {
+        word = `(${word})`;
+      }
+    } else if (difficulty === 'medium' && language !== 'code') {
+      // Medium tier: the original "advanced" decoration levels.
       const rand = Math.random();
       if (rand < 0.15) {
         word = word.charAt(0).toUpperCase() + word.slice(1);

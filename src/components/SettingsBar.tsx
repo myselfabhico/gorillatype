@@ -7,12 +7,15 @@ interface SettingsBarProps {
   isOpen: boolean;
   settings: UserSettings;
   onUpdateSettings: (newSettings: Partial<UserSettings>) => void;
-  onOpenCustomModal?: () => void;
+  /** Toggles Custom Mode: enters it when off, reverts to the normal typing test when on. */
+  onToggleCustom?: () => void;
+  /** True while the app is in Custom Mode (form open or a custom-text test running). */
+  customActive?: boolean;
   /** True while a typing test is running — the Backspace toggle cannot be changed mid-test. */
   testLocked?: boolean;
 }
 
-export const SettingsBar: FC<SettingsBarProps> = ({ isOpen, settings, onUpdateSettings, onOpenCustomModal, testLocked = false }) => {
+export const SettingsBar: FC<SettingsBarProps> = ({ isOpen, settings, onUpdateSettings, onToggleCustom, customActive = false, testLocked = false }) => {
   if (!isOpen) return null;
   const fontSizes: FontSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
   const durations = [15, 30, 60, 120, 180, 240, 300, 420, 600, 1200, 1800];
@@ -83,7 +86,7 @@ export const SettingsBar: FC<SettingsBarProps> = ({ isOpen, settings, onUpdateSe
             <button onClick={() => onUpdateSettings({ showChart: !settings.showChart })} aria-pressed={settings.showChart} className={toggleClass(settings.showChart)} title="Toggle Performance Chart"><BarChart2 className="w-4 h-4" />Chart</button>
             <button onClick={() => onUpdateSettings({ showTimer: !settings.showTimer })} aria-pressed={settings.showTimer} className={toggleClass(settings.showTimer)} title="Toggle Countdown Timer Visibility">{settings.showTimer ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}Timer</button>
             <button onClick={() => onUpdateSettings({ showCaret: !settings.showCaret })} aria-pressed={settings.showCaret} className={toggleClass(settings.showCaret)} title="Toggle Caret"><MousePointer className="w-4 h-4" />Caret</button>
-            {onOpenCustomModal && <button onClick={onOpenCustomModal} className={toggleClass(false)} title="Custom Mode & Word Bank Editor"><Edit3 className="w-4 h-4" />Custom</button>}
+            {onToggleCustom && <button onClick={onToggleCustom} aria-pressed={customActive} className={toggleClass(customActive)} title={customActive ? 'Custom Mode is active — click to revert to the normal typing test' : 'Switch to Custom Mode: type your own text'}><Edit3 className="w-4 h-4" />Custom</button>}
           </div>
         </div>
       </div>

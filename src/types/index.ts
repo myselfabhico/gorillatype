@@ -19,7 +19,7 @@ export type LanguageId =
   | 'russian'
   | 'code';
 
-export type DifficultyMode = 'normal' | 'advanced';
+export type DifficultyMode = 'easy' | 'medium' | 'hard';
 
 export type KeyboardSoundId = 'standard' | 'mute';
 
@@ -60,6 +60,10 @@ export interface TestRecord {
   difficulty: DifficultyMode;
   language: LanguageId;
   duration: number;
+  /** Keystroke outcome counts, MonkeyType style: correct / incorrect / extra / missed. */
+  charStats?: { correct: number; incorrect: number; extra: number; missed: number };
+  /** Steady-pace score, 0..100 — how evenly the test was typed. */
+  consistency?: number;
 }
 
 export interface UserSettings {
@@ -87,7 +91,10 @@ export interface KeystrokePoint {
   second: number;
   wpm: number;
   rawWpm: number;
+  /** Errors made within this one-second slice (not cumulative). */
   errors: number;
+  /** Instant speed of that slice in WPM — the "burst" line on the results chart. */
+  burst: number;
 }
 
 export interface DailyGoal {
