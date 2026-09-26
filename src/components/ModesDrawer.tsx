@@ -1,4 +1,4 @@
-import type { FC, ReactNode } from 'react';
+import type { FC, ReactNode, CSSProperties } from 'react';
 import { X, Keyboard, BookOpen, Sliders, Check } from 'lucide-react';
 import type { AppMode } from '../types';
 
@@ -25,13 +25,13 @@ export const ModesDrawer: FC<ModesDrawerProps> = ({ isOpen, onClose, currentMode
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-darkborder">
               <div className="flex items-center gap-2"><div className="w-7 h-7 rounded-lg bg-accent text-black font-mono font-bold text-xs flex items-center justify-center">IO</div><h3 className="text-lg font-bold tracking-tight">Typing Modes</h3></div>
-              <button onClick={onClose} aria-label="Close modes" className="p-1.5 rounded-lg bg-darkbg hover:bg-darkborder text-mutedtext hover:text-bodytext"><X className="w-4 h-4" /></button>
+              <button onClick={onClose} aria-label="Close modes" className="p-1.5 rounded-lg bg-darkbg hover:bg-darkborder text-mutedtext hover:text-bodytext transition-all active:scale-90 group"><X className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" /></button>
             </div>
             <div className="mt-5 flex flex-col gap-2.5">
-              {modes.map((item) => {
+              {modes.map((item, index) => {
                 const isActive = currentMode === item.id;
                 return (
-                  <button key={item.id} onClick={() => { onSelectMode(item.id); onClose(); }} className={`w-full text-left p-3.5 rounded-xl border transition-all flex items-start justify-between gap-3 group ${isActive ? 'bg-accentmuted border-accent shadow-md' : 'bg-darkbg border-darkborder hover:border-mutedtext hover:bg-darkcard'}`}>
+                  <button key={item.id} onClick={() => { onSelectMode(item.id); onClose(); }} className={`w-full text-left p-3.5 rounded-xl border transition-all flex items-start justify-between gap-3 group hover:-translate-y-0.5 ${isActive ? 'bg-accentmuted border-accent shadow-md' : 'bg-darkbg border-darkborder hover:border-mutedtext hover:bg-darkcard'} stagger-item`} style={{ '--stagger-i': index ?? 0 } as CSSProperties}>
                     <div className="flex items-start gap-3">
                       <div className="p-2 rounded-lg bg-darkbg border border-darkborder shrink-0 group-hover:border-accent">{item.icon}</div>
                       <div><div className="flex items-center gap-2"><span className={`text-sm font-bold ${isActive ? 'text-accent' : 'text-bodytext'}`}>{item.title}</span>{item.badge && <span className="text-[10px] px-1.5 py-0.5 rounded bg-accentmuted text-accent font-semibold">{item.badge}</span>}</div><p className="text-xs text-mutedtext mt-1 leading-snug">{item.description}</p></div>

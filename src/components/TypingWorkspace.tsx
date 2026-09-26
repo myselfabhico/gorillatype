@@ -1,10 +1,12 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { ChangeEvent, CompositionEvent } from 'react';
-import { RefreshCw, Settings, ChevronDown, Clock, AlertTriangle, MousePointerClick } from 'lucide-react';
+import { RefreshCw, Settings, ChevronDown, Clock, AlertTriangle, MousePointerClick, AtSign, Hash } from 'lucide-react';
 import type { UserSettings, TestRecord, KeystrokePoint } from '../types';
-import { getRandomWords } from '../utils/wordBanks';
+import { generateWords } from '../utils/wordModifiers';
 import { calculateWpm, calculateRawWpm, calculateAccuracy } from '../utils/stats';
+import { recordWrongKey, recordMissedKey } from '../utils/keyInsights';
+import type { KeyMistakeStore } from '../utils/keyInsights';
 import { findKeyForChar } from '../utils/keyboardLayout';
 import { soundManager } from '../utils/sound';
 import { VirtualKeyboard } from './VirtualKeyboard';
@@ -13,7 +15,7 @@ import type { KeyboardPress } from './VirtualKeyboard';
 interface TypingWorkspaceProps {
   settings: UserSettings;
   onUpdateSettings: (newSettings: Partial<UserSettings>) => void;
-  onFinishTest: (record: TestRecord, historyPoints: KeystrokePoint[]) => void;
+  onFinishTest: (record: TestRecord, historyPoints: KeystrokePoint[], keyMistakes: KeyMistakeStore) => void;
   onToggleSettingsBar: () => void;
   isSettingsOpen: boolean;
   onOpenLanguageModal: () => void;
@@ -32,7 +34,7 @@ interface WordStatus {
 function createSession(settings: UserSettings, customText?: string) {
   const customWords = customText?.trim().split(/\s+/).filter(Boolean);
   return {
-    words: (customWords?.length ? customWords : getRandomWords(settings.language, settings.difficulty, 300)).map((word): WordStatus => ({ word })),
+    words: (customWords?.length ? customWords : generateWords(settings, 300)).map((word): WordStatus => ({ word })),
     finite: Boolean(customWords?.length),
     index: 0,
     input: '',
@@ -45,7 +47,13 @@ function createSession(settings: UserSettings, customText?: string) {
      totalCharacters: 0,
      correctWords: 0,
      wrongWords: 0,
-     backspacePresses: 0,
+     /** Words that contained mistakes but were fully fixed before submission. */
+     correctedWords: 0,
+     correctedKeys: 0,
+     /** Wrong/extra keypresses made in the current word (backspace-reversible). */
+     wordMistakeCount: 0,
+     /** Outcome of every keystroke in the current word, so backspace can undo them. */
+     wordKeyLog: [] as Array<'correct' | 'wrong' | 'extra'>,
      elapsed: 0,
      idleWarning: false,
      history: [] as KeystrokePoint[],
@@ -53,6 +61,7 @@ function createSession(settings: UserSettings, customText?: string) {
      lastErrorTotal: 0,
      burstTotal: 0,
      lastSampleAt: 0,
+     keyMistakes: { wrong: {}, missed: {} } as KeyMistakeStore,
    };
  }
 
@@ -69,15 +78,16 @@ function getMetrics(session: Session, elapsed: number) {
   return {
     wpm: calculateWpm(netChars, elapsed),
     rawWpm: calculateRawWpm(rawChars, elapsed),
-    // Every keypress counts, including backspaces — deleting never restores accuracy.
-    accuracy: calculateAccuracy(session.correctAttempts, session.correctAttempts + session.wrongAttempts + session.backspacePresses),
+    // Accuracy reflects the FINAL text: mistakes erased with backspace are
+    // removed from both counters, so a corrected word costs nothing.
+    accuracy: calculateAccuracy(session.correctAttempts, session.correctAttempts + session.wrongAttempts),
   };
 }
 
 export function TypingWorkspace(props: TypingWorkspaceProps) {
   const [restart, setRestart] = useState(0);
   const { settings, customText, mode } = props;
-  const key = JSON.stringify([settings.language, settings.difficulty, settings.duration, customText, mode, restart]);
+  const key = JSON.stringify([settings.language, settings.difficulty, settings.duration, settings.punctuation, settings.numbers, customText, mode, restart]);
   return <TypingSession key={key} {...props} onRestart={() => setRestart((value) => value + 1)} />;
 }
 
@@ -95,6 +105,8 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
   const selectionRef = useRef<{ start: number; end: number } | null>(null);
   const [nextChar, setNextChar] = useState<string | null>(null);
   const [press, setPress] = useState<KeyboardPress | null>(null);
+  // Brief ok/bad flash on the word that was just submitted.
+  const [flash, setFlash] = useState<{ index: number; ok: boolean } | null>(null);
   const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
   const pressSeq = useRef(0);
   const latestRef = useRef({ settings, blocked, onFinishTest, onRestart, mode, onTestActiveChange });
@@ -113,6 +125,12 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
     // A fresh session (mount, reset button, idle reset, difficulty change) means no test is running.
     onTestActiveChange?.(false);
   }, [onTestActiveChange]);
+
+  useEffect(() => {
+    if (!flash) return;
+    const timer = window.setTimeout(() => setFlash(null), 600);
+    return () => window.clearTimeout(timer);
+  }, [flash]);
 
   const publish = useCallback(() => {
     const session = sessionRef.current;
@@ -140,7 +158,11 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
     // Missed characters: the untyped tail of an unfinished word that already contains an error.
     const partialTarget = Array.from(session.words[session.index]?.word ?? '');
     const partialPerfect = session.input.length <= partialTarget.length && Array.from(session.input).every((char, index) => char === partialTarget[index]);
-    if (session.input.length > 0 && !partialPerfect) session.charStats.missed += Math.max(0, partialTarget.length - session.input.length);
+    if (session.input.length > 0 && !partialPerfect) {
+      session.charStats.missed += Math.max(0, partialTarget.length - session.input.length);
+      // Track WHICH keys were skipped — same attribution as mid-test word submissions.
+      for (let i = session.input.length; i < partialTarget.length; i++) recordMissedKey(session.keyMistakes, partialTarget[i]);
+    }
     // Consistency: 100 minus the coefficient of variation of the per-second net speeds.
     const samples = session.history.map((item) => item.wpm).filter((value) => value > 0);
     let consistency = 100;
@@ -151,6 +173,12 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
     }
     const partial = session.input.length > 0;
     const matches = partial && session.input === session.words[session.index]?.word;
+    if (matches && session.wordMistakeCount > 0) {
+      session.correctedWords++;
+      session.correctedKeys += session.wordMistakeCount;
+      session.wordMistakeCount = 0;
+      session.wordKeyLog = [];
+    }
     const record: TestRecord = {
       id: 'test_' + Date.now(),
       date: new Date().toISOString(),
@@ -164,10 +192,12 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
       duration: Math.round(session.elapsed * 10) / 10,
       charStats: { ...session.charStats },
       consistency,
+      correctedWords: session.correctedWords,
+      correctedKeys: session.correctedKeys,
     };
     publish();
     if (currentSettings.websiteSfx) soundManager.playFinishSound();
-    complete(record, [...session.history]);
+    complete(record, [...session.history], session.keyMistakes);
   }, [publish]);
 
   useEffect(() => {
@@ -243,8 +273,6 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
       } else if (event.key === 'Escape' && target === inputRef.current) {
         inputRef.current?.blur();
       } else if (event.key === 'Backspace') {
-        const session = sessionRef.current;
-        if (session.startedAt !== null && !session.finished) session.backspacePresses++;
         if (!settings.backspaceEnabled) event.preventDefault();
       }
     };
@@ -326,15 +354,44 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
       const isExtra = position > targetChars.length;
       const expected = position === targetChars.length ? ' ' : targetChars[position] ?? '';
       const correct = !isExtra && char === expected;
-      if (isExtra) session.charStats.extra++;
-      else if (correct) session.charStats.correct++;
-      else session.charStats.incorrect++;
-      if (correct) session.correctAttempts++;
-      else session.wrongAttempts++;
+      if (isExtra) {
+        session.charStats.extra++;
+        session.wordMistakeCount++;
+        session.wordKeyLog.push('extra');
+      }
+      else if (correct) {
+        session.charStats.correct++;
+        session.correctAttempts++;
+        session.wordKeyLog.push('correct');
+      }
+      else {
+        session.charStats.incorrect++;
+        session.wrongAttempts++;
+        session.wordMistakeCount++;
+        session.wordKeyLog.push('wrong');
+        // Attribute the slip to the key that SHOULD have been pressed.
+        if (expected && expected !== ' ') recordWrongKey(session.keyMistakes, expected, char);
+        else if (expected === ' ') recordWrongKey(session.keyMistakes, ' ', char);
+      }
       session.burstTotal++;
       lastChar = char;
       lastCorrect = correct;
       position++;
+    }
+    // A deletion erases the newest characters of the current word — undo their
+    // recorded outcomes so a fully corrected word leaves zero mistakes behind.
+    const deletedCount = Math.max(0, Array.from(previous).length - Array.from(value).length);
+    for (let i = 0; i < deletedCount; i++) {
+      const outcome = session.wordKeyLog.pop();
+      if (outcome === 'correct') {
+        session.charStats.correct--;
+        session.correctAttempts--;
+      } else if (outcome === 'wrong') {
+        session.charStats.incorrect--;
+        session.wrongAttempts--;
+      } else if (outcome === 'extra') {
+        session.charStats.extra--;
+      }
     }
     if (lastChar) {
       const stroke = findKeyForChar(lastChar);
@@ -362,20 +419,32 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
       if (correct) {
         session.correctCharacters += typed.length + 1;
         session.correctWords++;
+        // Mistakes existed in this word but the submitted text is perfect —
+        // they must have been fixed with backspace. Credit the word as corrected.
+        if (session.wordMistakeCount > 0) {
+          session.correctedWords++;
+          session.correctedKeys += session.wordMistakeCount;
+        }
         if (settings.websiteSfx) soundManager.playWordSuccess();
       } else {
         session.wrongWords++;
         // MonkeyType: characters of a failed word that were never typed count as missed.
-        session.charStats.missed += Math.max(0, targetChars.length - typed.length);
+        const skipped = Math.max(0, targetChars.length - typed.length);
+        session.charStats.missed += skipped;
+        // Track WHICH keys were skipped, for the problem-key report.
+        for (let i = typed.length; i < targetChars.length; i++) recordMissedKey(session.keyMistakes, targetChars[i]);
         if (settings.websiteSfx) soundManager.playWordWrong();
       }
       session.totalCharacters += typed.length + 1;
       session.burstTotal++; // the space keypress belongs to the burst window
       session.words[session.index] = { word: target, typedText: session.input };
+      setFlash({ index: session.index, ok: correct });
       session.index++;
       session.input = '';
+      session.wordMistakeCount = 0;
+      session.wordKeyLog = [];
       if (!session.finite && session.index >= session.words.length - 50) {
-        session.words.push(...getRandomWords(settings.language, settings.difficulty, 300).map((word) => ({ word })));
+        session.words.push(...generateWords(settings, 300).map((word) => ({ word })));
       }
     }
     const upcoming = session.words[session.index]?.word;
@@ -412,15 +481,23 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
   const chartPoints = [{ second: 0, wpm: 0, rawWpm: 0, errors: 0, burst: 0 }, ...view.history];
   const maximum = Math.max(30, ...chartPoints.map((point) => point.rawWpm));
   const chartPath = (field: 'wpm' | 'rawWpm') => chartPoints.map((point, index) => `${index ? 'L' : 'M'} ${10 + point.second / Math.max(1, view.elapsed) * 580} ${110 - point[field] / maximum * 100}`).join(' ');
-  const buttonClass = 'p-1.5 bg-darkcard hover:bg-darkbg text-mutedtext hover:text-accent rounded-lg border border-darkborder hover:border-accent transition-all shadow-sm';
+  const buttonClass = 'p-1.5 bg-darkcard hover:bg-darkbg text-mutedtext hover:text-accent rounded-lg border border-darkborder hover:border-accent transition-all shadow-sm active:scale-95';
 
   return (
     <div className="w-full max-w-4xl mx-auto px-2 sm:px-4 py-2 select-none" inert={blocked}>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-        <button onClick={onOpenLanguageModal} className={`${buttonClass} flex items-center gap-2 px-3 text-xs font-semibold`}>
-          <span className="capitalize">{mode === 'custom' ? 'Custom text' : settings.language.replace('-', ' ')}</span>
-          <ChevronDown className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button onClick={onOpenLanguageModal} className={`${buttonClass} flex items-center gap-2 px-3 text-xs font-semibold`}>
+            <span className="capitalize">{mode === 'custom' ? 'Custom text' : settings.language.replace('-', ' ')}</span>
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
+          {mode !== 'custom' && (
+            <div role="group" aria-label="Word modifiers" className="flex items-center gap-1 bg-darkcard p-0.5 rounded-lg border border-darkborder text-xs font-semibold">
+              <button onClick={() => onUpdateSettings({ punctuation: !settings.punctuation })} aria-pressed={settings.punctuation} title="Add capitals, commas and sentence punctuation (regenerates the test)" className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors ${settings.punctuation ? 'bg-darkbg text-accent border-b-2 border-accent font-bold' : 'text-mutedtext hover:text-bodytext'}`}><AtSign className="w-3.5 h-3.5" />punctuation</button>
+              <button onClick={() => onUpdateSettings({ numbers: !settings.numbers })} aria-pressed={settings.numbers} title="Replace some words with 4-digit numbers (regenerates the test)" className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors ${settings.numbers ? 'bg-darkbg text-accent border-b-2 border-accent font-bold' : 'text-mutedtext hover:text-bodytext'}`}><Hash className="w-3.5 h-3.5" />numbers</button>
+            </div>
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center bg-darkcard p-0.5 rounded-lg border border-darkborder text-xs font-semibold">
             {(['easy', 'medium', 'hard'] as const).map((difficulty) => (
@@ -428,12 +505,12 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
             ))}
           </div>
           <div role="group" aria-label="Live typing speed" title="Live words per minute" className="flex items-baseline gap-1.5 px-3 py-1 bg-darkbg border border-darkborder rounded-lg font-mono">
-            <span data-testid="live-wpm" className="min-w-[3ch] text-right text-lg font-bold tabular-nums text-accent">{metrics.wpm}</span>
+            <span data-testid="live-wpm" key={metrics.wpm} className="min-w-[3ch] text-right text-lg font-bold tabular-nums text-accent stat-tick">{metrics.wpm}</span>
             <span className="text-xs font-semibold text-mutedtext">WPM</span>
           </div>
           {settings.showTimer && <div className="flex items-center gap-1.5 px-3 py-1 bg-darkbg border border-darkborder rounded-lg font-mono font-bold text-accent text-sm"><Clock className="w-3.5 h-3.5 text-mutedtext" /><span>{String(Math.floor(timeLeft / 60)).padStart(2, '0')}:{String(timeLeft % 60).padStart(2, '0')}</span></div>}
-          <button onClick={onRestart} className={buttonClass} title="Restart Test (F1)" aria-label="Restart Test"><RefreshCw className="w-4 h-4" /></button>
-          <button onClick={onToggleSettingsBar} className={`${buttonClass} ${isSettingsOpen ? 'text-accent border-accent' : ''}`} title="Toggle Settings Bar" aria-label="Settings"><Settings className="w-4 h-4" /></button>
+          <button onClick={onRestart} className={`${buttonClass} group`} title="Restart Test (F1)" aria-label="Restart Test"><RefreshCw className="w-4 h-4 transition-transform duration-500 group-hover:rotate-180" /></button>
+          <button onClick={onToggleSettingsBar} className={`${buttonClass} group ${isSettingsOpen ? 'text-accent border-accent' : ''}`} title="Toggle Settings Bar" aria-label="Settings"><Settings className="w-4 h-4 transition-transform duration-500 group-hover:rotate-90" /></button>
         </div>
       </div>
       <input
@@ -454,10 +531,10 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
       />
       <div ref={canvasRef} tabIndex={-1} onClick={(event) => {
         if (!blocked && !(event.target as HTMLElement).closest('button')) inputRef.current?.focus({ preventScroll: true });
-      }} className="relative w-full bg-darkcard border-2 border-darkborder rounded-2xl p-6 md:p-8 shadow-2xl cursor-text overflow-hidden">
+      }} className={`relative w-full bg-darkcard border-2 border-darkborder rounded-2xl p-6 md:p-8 shadow-2xl cursor-text overflow-hidden animate-rise-in typing-card ${isFocused ? 'typing-card-focused' : ''}`}>
         {view.idleWarning && <div role="status" className="absolute top-2 left-1/2 -translate-x-1/2 z-20 bg-wrongred text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg flex items-center gap-2"><AlertTriangle className="w-4 h-4" /><span>Keep typing! The test will reset in 5 seconds.</span></div>}
         <div className="relative">
-          {!isFocused && !blocked && <div onClick={() => inputRef.current?.focus({ preventScroll: true })} className="absolute inset-0 z-10 bg-darkbg/80 backdrop-blur-sm flex flex-col items-center justify-center gap-2 text-bodytext cursor-pointer"><MousePointerClick className="w-8 h-8 text-accent" /><span>Click here to continue (or press TAB)</span></div>}
+          {!isFocused && !blocked && <div onClick={() => inputRef.current?.focus({ preventScroll: true })} className="absolute inset-0 z-10 bg-darkbg/80 backdrop-blur-sm flex flex-col items-center justify-center gap-2 text-bodytext cursor-pointer animate-fade-in"><MousePointerClick className="w-8 h-8 text-accent float-y" /><span>Click here to continue (or press TAB)</span></div>}
           <div ref={wordsContainerRef} className={`relative w-full h-32 overflow-hidden font-mono ${fontClasses[settings.fontSize]} flex content-start flex-wrap gap-x-3 gap-y-2 tracking-wide text-left`}>
             {view.words.map((item, index) => {
               const current = index === view.index;
@@ -465,7 +542,7 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
               if (!current) {
                 const typedChars = Array.from(item.typedText ?? '');
                 return (
-                  <span key={index} className="max-w-full break-all">
+                  <span key={index} className={`max-w-full break-all ${flash?.index === index ? (flash.ok ? 'word-flash-ok' : 'word-flash-bad') : ''}`}>
                     {Array.from(item.word).map((char, charIndex) => {
                       const typedChar = typedChars[charIndex];
                       return <span key={charIndex} className={typedChar === undefined ? 'text-mutedtext' : typedChar === char ? 'text-accent' : 'text-wrongred'}>{char}</span>;
@@ -504,11 +581,11 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
         </div>
         <div className="mt-6 pt-5 border-t border-darkborder flex items-center justify-between gap-4">
           <div className="min-w-0 flex-1 text-xs text-mutedtext font-medium">Type in the paragraph above — it captures your keystrokes directly.</div>
-          <button onClick={onRestart} className={`${buttonClass} px-5 py-3 flex items-center gap-2 text-sm font-bold`} title="Restart Test"><RefreshCw className="w-4 h-4" /><span className="hidden sm:inline">Reset</span></button>
+          <button onClick={onRestart} className={`${buttonClass} px-5 py-3 flex items-center gap-2 text-sm font-bold group`} title="Restart Test"><RefreshCw className="w-4 h-4 transition-transform duration-500 group-hover:rotate-180" /><span className="hidden sm:inline">Reset</span></button>
         </div>
       </div>
       <div className="mt-4 bg-darkcard border border-darkborder rounded-xl p-4">
-        <div className="flex flex-wrap justify-between gap-3 text-xs text-mutedtext font-mono"><span>WPM <strong className="text-accent">{metrics.wpm}</strong></span><span>Raw <strong className="text-bodytext">{metrics.rawWpm}</strong></span><span>Accuracy <strong className="text-accent">{metrics.accuracy}%</strong></span><span>Errors <strong className="text-wrongred">{view.wrongAttempts}</strong></span></div>
+        <div className="flex flex-wrap justify-between gap-3 text-xs text-mutedtext font-mono"><span>WPM <strong key={metrics.wpm} className="text-accent stat-tick">{metrics.wpm}</strong></span><span>Raw <strong key={`raw${metrics.rawWpm}`} className="text-bodytext stat-tick">{metrics.rawWpm}</strong></span><span>Accuracy <strong key={`acc${metrics.accuracy}`} className="text-accent stat-tick">{metrics.accuracy}%</strong></span><span>Errors <strong key={`err${view.wrongAttempts}`} className="text-wrongred stat-tick">{view.wrongAttempts}</strong></span></div>
         {settings.showChart && <svg viewBox="0 0 600 120" role="img" aria-label="Live WPM and raw WPM chart" className="w-full h-32 mt-3"><path d="M 10 110 H 590" fill="none" stroke="var(--color-border)" /><path d={chartPath('rawWpm')} fill="none" stroke="var(--color-text-muted)" strokeWidth="2" strokeDasharray="4 2" /><path d={chartPath('wpm')} fill="none" stroke="var(--color-accent)" strokeWidth="3" /></svg>}
       </div>
       {portalRoot && createPortal(

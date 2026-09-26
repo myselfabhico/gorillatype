@@ -62,8 +62,26 @@ export interface TestRecord {
   duration: number;
   /** Keystroke outcome counts, MonkeyType style: correct / incorrect / extra / missed. */
   charStats?: { correct: number; incorrect: number; extra: number; missed: number };
+  /** Words whose mistakes were fully fixed with backspace before submission. */
+  correctedWords?: number;
+  /** Individual keystrokes that were fixed with backspace inside those words. */
+  correctedKeys?: number;
   /** Steady-pace score, 0..100 — how evenly the test was typed. */
   consistency?: number;
+}
+
+/** One entry of the "problem keys" report shown on every fifth test. */
+export interface KeyInsight {
+  /** The character that should have been typed (' ' for space). */
+  key: string;
+  /** Times it was pressed wrong in the tracked window. */
+  wrong: number;
+  /** The wrong key most often typed instead, if any. */
+  instead: string | null;
+  /** How many times that wrong key was typed instead. */
+  insteadCount: number;
+  /** Times the key was skipped/dropped entirely (word submitted without it). */
+  missed: number;
 }
 
 export interface UserSettings {
@@ -79,6 +97,10 @@ export interface UserSettings {
   showTimer: boolean;
   showChart: boolean;
   showCaret: boolean;
+  /** Monkeytype-style decoration of generated words (capitals, commas, quotes…). */
+  punctuation: boolean;
+  /** Monkeytype-style chance for some words to be replaced by a 4-digit number. */
+  numbers: boolean;
   difficulty: DifficultyMode;
   language: LanguageId;
   smoothScroll: boolean;

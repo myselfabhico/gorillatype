@@ -1,4 +1,4 @@
-import type { FC, UIEvent } from 'react';
+import type { FC, UIEvent, CSSProperties } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { X, Target, Check, Trash2 } from 'lucide-react';
 import type { DailyGoal } from '../types';
@@ -61,13 +61,13 @@ export const GoalModal: FC<GoalModalProps> = ({ goal, typedSeconds, onSetGoal, o
               <p className="text-[11px] text-mutedtext mt-1">Pick your typing time for today</p>
             </div>
           </div>
-          <button onClick={onClose} aria-label="Close daily goal" className="p-1.5 rounded-lg bg-darkbg hover:bg-darkborder text-mutedtext hover:text-bodytext transition-colors">
-            <X className="w-4 h-4" />
+          <button onClick={onClose} aria-label="Close daily goal" className="p-1.5 rounded-lg bg-darkbg hover:bg-darkborder text-mutedtext hover:text-bodytext transition-all active:scale-90 group">
+            <X className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" />
           </button>
         </div>
 
         {goal && (
-          <div className="mt-4 bg-darkbg border border-darkborder rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+          <div className="mt-4 bg-darkbg border border-darkborder rounded-xl px-4 py-3 flex items-center justify-between gap-3 stagger-item" style={{ '--stagger-i': 1 } as CSSProperties}>
             <div className="text-xs text-mutedtext leading-relaxed">
               <span className="font-semibold text-bodytext">Today:</span> {goal.completed ? 'completed 🎉' : `${Math.floor(typedSeconds / 60)}m ${Math.floor(typedSeconds % 60)}s typed`}
             </div>
@@ -80,7 +80,7 @@ export const GoalModal: FC<GoalModalProps> = ({ goal, typedSeconds, onSetGoal, o
           </div>
         )}
 
-        <div className="mt-4">
+        <div className="mt-4 stagger-item" style={{ '--stagger-i': 2 } as CSSProperties}>
           <div className="relative rounded-xl border border-darkborder bg-darkbg overflow-hidden" style={{ height: pickerHeight }}>
             <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[44px] bg-accentmuted border-y border-accent/60 pointer-events-none z-10" />
             <div ref={listRef} onScroll={handleScroll} className="h-full overflow-y-scroll no-scrollbar snap-y snap-mandatory">
@@ -105,10 +105,10 @@ export const GoalModal: FC<GoalModalProps> = ({ goal, typedSeconds, onSetGoal, o
           <p className="mt-2 text-center text-[11px] text-mutedtext">Scroll or tap a value — the highlighted number is selected</p>
         </div>
 
-        <div className="mt-5 flex items-center gap-2.5">
+        <div className="mt-5 flex items-center gap-2.5 stagger-item" style={{ '--stagger-i': 3 } as CSSProperties}>
           <button
             onClick={() => { onSetGoal(selected); onClose(); }}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent hover:bg-accenthover text-black font-bold text-sm shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="btn-shine glow-accent flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent hover:bg-accenthover text-black font-bold text-sm shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <Check className="w-4 h-4" strokeWidth={3} />
             Set Goal
@@ -116,7 +116,7 @@ export const GoalModal: FC<GoalModalProps> = ({ goal, typedSeconds, onSetGoal, o
           {goal && (
             <button
               onClick={() => { onClearGoal(); onClose(); }}
-              className="p-3 rounded-xl bg-darkbg border border-darkborder hover:border-wrongred text-mutedtext hover:text-wrongred transition-colors"
+              className="p-3 rounded-xl bg-darkbg border border-darkborder hover:border-wrongred text-mutedtext hover:text-wrongred transition-all hover:scale-105 active:scale-90"
               title="Remove today's goal"
               aria-label="Remove daily goal"
             >

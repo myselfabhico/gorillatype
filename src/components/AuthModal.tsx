@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { FC } from 'react';
+import type { FC, CSSProperties } from 'react';
 import { X, Cookie, Award, Trash2, Check, History, Zap } from 'lucide-react';
 import type { UserProfile } from '../types';
 import { saveProfileCookie, DEFAULT_PROFILE } from '../utils/cookies';
@@ -46,24 +46,24 @@ const ProfileEditor: FC<Omit<AuthModalProps, 'isOpen'>> = ({ onClose, profile, o
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div role="dialog" aria-modal="true" aria-labelledby="profile-title" className="relative w-full max-w-xl bg-darkcard border-2 border-darkborder rounded-2xl p-6 sm:p-7 shadow-2xl z-10 text-bodytext max-h-[90vh] overflow-y-auto">
+      <div role="dialog" aria-modal="true" aria-labelledby="profile-title" className="relative w-full max-w-xl bg-darkcard border-2 border-darkborder rounded-2xl p-6 sm:p-7 shadow-2xl z-10 text-bodytext max-h-[90vh] overflow-y-auto animate-pop-in">
         <div className="flex items-center justify-between pb-4 border-b border-darkborder">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-accentmuted text-accent"><Cookie className="w-5 h-5" /></div>
             <div><h3 id="profile-title" className="text-lg font-bold">Local Cookie Profile</h3><p className="text-xs text-mutedtext">No login needed • Stored in this browser's cookies</p></div>
           </div>
-          <button onClick={onClose} aria-label="Close profile" className="p-1.5 rounded-lg bg-darkbg hover:bg-darkborder text-mutedtext hover:text-bodytext"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} aria-label="Close profile" className="p-1.5 rounded-lg bg-darkbg hover:bg-darkborder text-mutedtext hover:text-bodytext transition-all active:scale-90 group"><X className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" /></button>
         </div>
         <div className="mt-5 space-y-4">
           <div>
             <span className="text-xs font-semibold text-mutedtext uppercase tracking-wider block mb-2">Choose Avatar</span>
-            <div className="flex flex-wrap gap-2">{AVATARS.map((avatar, index) => <button key={avatar} onClick={() => setSelectedAvatar(avatar)} aria-label={`Avatar ${index + 1}`} aria-pressed={selectedAvatar === avatar} className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center border transition-all ${selectedAvatar === avatar ? 'bg-accentmuted border-accent scale-110 shadow-md' : 'bg-darkbg border-darkborder hover:border-mutedtext'}`}>{avatar}</button>)}</div>
+            <div className="flex flex-wrap gap-2">            {AVATARS.map((avatar, index) => <button key={avatar} onClick={() => setSelectedAvatar(avatar)} aria-label={`Avatar ${index + 1}`} aria-pressed={selectedAvatar === avatar} className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center border transition-all hover:scale-110 hover:-translate-y-0.5 stagger-item ${selectedAvatar === avatar ? 'bg-accentmuted border-accent scale-110 shadow-md' : 'bg-darkbg border-darkborder hover:border-mutedtext'}`} style={{ '--stagger-i': index * 0.5 } as CSSProperties}>{avatar}</button>)}</div>
           </div>
           <div>
             <label htmlFor="profile-name" className="text-xs font-semibold text-mutedtext uppercase tracking-wider block mb-2">Nickname / Typist Tag</label>
             <div className="flex items-center gap-2">
               <input id="profile-name" value={username} onChange={(e) => setUsername(e.target.value)} maxLength={24} className="w-full min-w-0 bg-darkbg border border-darkborder focus:border-accent rounded-xl px-4 py-2.5 text-sm font-semibold outline-none" placeholder="Enter nickname..." />
-              <button onClick={handleSave} disabled={savedSuccess} className="px-5 py-2.5 bg-accent hover:bg-accenthover text-black font-extrabold rounded-xl text-xs flex items-center gap-1.5 shrink-0 shadow-md">{savedSuccess ? <Check className="w-4 h-4" /> : <Zap className="w-4 h-4" />}<span>{savedSuccess ? 'Saved!' : 'Save'}</span></button>
+              <button onClick={handleSave} disabled={savedSuccess} className="btn-shine glow-accent px-5 py-2.5 bg-accent hover:bg-accenthover text-black font-extrabold rounded-xl text-xs flex items-center gap-1.5 shrink-0 shadow-md active:scale-95">{savedSuccess ? <Check className="w-4 h-4" /> : <Zap className="w-4 h-4" />}<span>{savedSuccess ? 'Saved!' : 'Save'}</span></button>
             </div>
           </div>
         </div>
@@ -75,7 +75,7 @@ const ProfileEditor: FC<Omit<AuthModalProps, 'isOpen'>> = ({ onClose, profile, o
               ['Average WPM', profile.averageWpm],
               ['Avg Accuracy', `${profile.averageAccuracy}%`],
               ['Tests Taken', profile.testsCompleted],
-            ].map(([label, value]) => <div key={label} className="p-3 bg-darkbg rounded-xl border border-darkborder text-center"><span className="text-2xl font-black font-mono text-accent block">{value}</span><span className="text-[11px] text-mutedtext font-medium">{label}</span></div>)}
+            ].map(([label, value]) => <div key={label} className="min-w-0 p-3 bg-darkbg rounded-xl border border-darkborder text-center"><span className="text-2xl font-black font-mono text-accent block [overflow-wrap:anywhere]">{value}</span><span className="text-[11px] text-mutedtext font-medium">{label}</span></div>)}
           </div>
         </div>
         <div className="mt-6 pt-5 border-t border-darkborder">

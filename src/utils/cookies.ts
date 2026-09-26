@@ -1,15 +1,18 @@
 import Cookies from 'js-cookie';
 import type { UserProfile, UserSettings, TestRecord, ThemeId, DailyGoal } from '../types';
+import type { KeyMistakeStore } from './keyInsights';
 
 const PROFILE_COOKIE_KEY = 'gorillatype_user_profile';
 const SETTINGS_COOKIE_KEY = 'gorillatype_user_settings';
 const GOAL_COOKIE_KEY = 'gorillatype_daily_goal';
+const KEY_STORE_COOKIE_KEY = 'gorillatype_key_mistakes';
 const options = { expires: 365, sameSite: 'lax' as const, path: '/', secure: location.protocol === 'https:' };
 
 export const DEFAULT_SETTINGS: UserSettings = {
   theme: 'default-dark', keyboardSound: 'standard', keyboardVolume: 0.7, websiteSfx: true, backspaceEnabled: true,
   fontSize: 'md', duration: 60,
   showTimer: true, showChart: true, showCaret: true,
+  punctuation: false, numbers: false,
   difficulty: 'easy', language: 'english', smoothScroll: true,
   showKeyboard: true, showHands: true, showFingerZones: false,
 };
@@ -94,7 +97,7 @@ export function getSettingsCookie(): UserSettings {
     if (typeof value[key] === 'boolean') settings[key] = value[key];
   }
   if (typeof value.keyboardVolume === 'number' && Number.isFinite(value.keyboardVolume) && value.keyboardVolume >= 0 && value.keyboardVolume <= 1) settings.keyboardVolume = value.keyboardVolume;
-  for (const key of ['showTimer', 'showChart', 'showCaret', 'smoothScroll', 'showKeyboard', 'showHands', 'showFingerZones'] as const) {
+  for (const key of ['showTimer', 'showChart', 'showCaret', 'smoothScroll', 'showKeyboard', 'showHands', 'showFingerZones', 'punctuation', 'numbers'] as const) {
     if (typeof value[key] === 'boolean') settings[key] = value[key];
   }
   if (typeof value.duration === 'number' && Number.isInteger(value.duration) && value.duration >= 15 && value.duration <= 1800) settings.duration = value.duration;
@@ -135,6 +138,30 @@ export function saveGoalCookie(goal: DailyGoal | null): void {
     return;
   }
   Cookies.set(GOAL_COOKIE_KEY, JSON.stringify(goal), options);
+}
+
+/* ---------- per-key mistake accumulator (drives the every-5th-test report) ---------- */
+
+function isKeyMistakeStore(value: unknown): value is KeyMistakeStore {
+  if (!isRecord(value) || !isRecord(value.wrong) || !isRecord(value.missed)) return false;
+  for (const entry of Object.values(value.wrong)) {
+    if (!isRecord(entry) || typeof entry.wrong !== 'number' || !isRecord(entry.typed)) return false;
+  }
+  return Object.values(value.missed).every((count) => typeof count === 'number');
+}
+
+export function getKeyMistakeStore(): KeyMistakeStore {
+  const value = readCookie(KEY_STORE_COOKIE_KEY);
+  return isKeyMistakeStore(value) ? value : { wrong: {}, missed: {} };
+}
+
+export function saveKeyMistakeStore(store: KeyMistakeStore): void {
+  Cookies.set(KEY_STORE_COOKIE_KEY, JSON.stringify(store), options);
+}
+
+/** Clears the accumulator after a milestone report has been shown. */
+export function clearKeyMistakeStore(): void {
+  Cookies.set(KEY_STORE_COOKIE_KEY, JSON.stringify({ wrong: {}, missed: {} }), options);
 }
 
 export function rollGoalToToday(goal: DailyGoal | null): DailyGoal | null {

@@ -1,4 +1,4 @@
-import type { FC } from 'react';
+import type { FC, CSSProperties } from 'react';
 import { X, Palette, Check, Sun, Moon } from 'lucide-react';
 import type { ThemeId } from '../types';
 
@@ -31,10 +31,10 @@ export const ThemeDrawer: FC<ThemeDrawerProps> = ({ isOpen, onClose, currentThem
     { id: 'parchment', name: 'Parchment', category: 'light', bgColor: '#F6F1E6', accentColor: '#9C6B3C', description: 'Warm book-page cream with rich walnut brown' },
   ];
 
-  const renderThemeButton = (theme: ThemeOption) => {
+  const renderThemeButton = (theme: ThemeOption, index: number) => {
     const isSelected = currentTheme === theme.id;
     return (
-      <button key={theme.id} onClick={() => onSelectTheme(theme.id)} aria-pressed={isSelected} className={`w-full p-3 rounded-xl border transition-all flex items-center justify-between gap-2 group ${isSelected ? 'bg-accentmuted border-accent shadow-md' : 'bg-darkbg border-darkborder hover:border-mutedtext hover:bg-darkcard'}`}>
+      <button key={theme.id} onClick={() => onSelectTheme(theme.id)} aria-pressed={isSelected} className={`w-full p-3 rounded-xl border transition-all flex items-center justify-between gap-2 group hover:-translate-y-0.5 stagger-item ${isSelected ? 'bg-accentmuted border-accent shadow-md' : 'bg-darkbg border-darkborder hover:border-mutedtext hover:bg-darkcard'}`} style={{ '--stagger-i': index } as CSSProperties}>
         <div className="flex items-center gap-3">
           <div className="flex items-center -space-x-1.5 p-1 bg-darkbg rounded-lg border border-darkborder shrink-0">
             <div className="w-5 h-5 rounded-full border border-darkborder shadow-sm" style={{ backgroundColor: theme.bgColor }} title={`Background: ${theme.bgColor}`} />
@@ -55,7 +55,7 @@ export const ThemeDrawer: FC<ThemeDrawerProps> = ({ isOpen, onClose, currentThem
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-darkborder">
               <div className="flex items-center gap-2"><Palette className="w-5 h-5 text-accent" /><h3 className="text-lg font-bold tracking-tight">Theme Palette</h3></div>
-              <button onClick={onClose} aria-label="Close themes" className="p-1.5 rounded-lg bg-darkbg hover:bg-darkborder text-mutedtext hover:text-bodytext"><X className="w-4 h-4" /></button>
+              <button onClick={onClose} aria-label="Close themes" className="p-1.5 rounded-lg bg-darkbg hover:bg-darkborder text-mutedtext hover:text-bodytext transition-all active:scale-90 group"><X className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" /></button>
             </div>
             <div className="mt-5">
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-mutedtext mb-3"><Moon className="w-3.5 h-3.5 text-accent" />Dark Themes</div>

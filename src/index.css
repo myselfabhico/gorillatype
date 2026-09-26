@@ -436,3 +436,213 @@ html, body {
   transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.18s ease;
 }
 .vk-switch.on .vk-knob { transform: translateX(13px); background: #ffffff; }
+
+/* ---------- Motion system ----------
+   One shared vocabulary: tokens for easing/duration, a handful of keyframes,
+   and utility classes. Every animation is transform/opacity only (GPU cheap),
+   short (<= 1s), and disabled under prefers-reduced-motion. */
+
+:root {
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --motion-fast: 0.18s;
+  --motion-base: 0.3s;
+  --motion-slow: 0.55s;
+}
+
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.94) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInSoft {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* One-shot entrances. 'backwards' (NOT forwards): during the delay the from-state
+   shows, and after the animation releases the element returns to its natural
+   state — which equals the final keyframe — so hover transform transitions work. */
+.animate-rise-in { animation: riseIn var(--motion-base) var(--ease-out-expo) backwards; }
+.animate-pop-in { animation: popIn var(--motion-base) var(--ease-spring) backwards; }
+.animate-slide-down { animation: slideDown var(--motion-base) var(--ease-out-expo) backwards; }
+
+/* Staggered list entrances: set --stagger-i (0-based) on each item. */
+.stagger-item {
+  animation: riseIn var(--motion-slow) var(--ease-out-expo) backwards;
+  animation-delay: calc(60ms + var(--stagger-i, 0) * 45ms);
+}
+
+/* Live stat values re-mount with a new key whenever their number changes,
+   replaying a tiny pop — motion that confirms the update. */
+.stat-tick { display: inline-block; animation: tickPop 0.25s var(--ease-spring); }
+@keyframes tickPop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+
+/* Submitted-word feedback: a brief lift+flash for a clean word, a tight
+   head-shake for a wrong one. Applied to the flex-item word span. */
+.word-flash-ok { animation: wordOk 0.45s var(--ease-out-expo); }
+@keyframes wordOk {
+  0% { transform: translateY(0); }
+  30% { transform: translateY(-3px); }
+  100% { transform: translateY(0); }
+}
+.word-flash-bad { animation: wordBad 0.3s ease-out; }
+@keyframes wordBad {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  60% { transform: translateX(3px); }
+  85% { transform: translateX(-1px); }
+}
+
+/* Results chart draw-in: lines carry pathLength=1 so a normalized dash
+   (0 -> 1) reveals them left-to-right without measuring path length.
+   The raw line keeps its own dash pattern, so it fades in instead. */
+.chart-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: chartDraw 0.9s var(--ease-out-expo) 0.2s forwards;
+}
+.chart-line-delayed { animation-delay: 0.45s; }
+@keyframes chartDraw { to { stroke-dashoffset: 0; } }
+.chart-fade-late {
+  opacity: 0;
+  animation: fadeInSoft 0.45s ease-out 0.85s forwards;
+}
+
+/* Respect users who opt out of motion: everything above becomes instant. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise-in,
+  .animate-pop-in,
+  .animate-slide-down,
+  .stagger-item,
+  .stat-tick,
+  .word-flash-ok,
+  .word-flash-bad,
+  .chart-line,
+  .chart-fade-late,
+  .caret-pulse,
+  .vk-breathe,
+  .vk-halo,
+  .vk-echo-halo {
+    animation: none !important;
+  }
+  .chart-line { stroke-dasharray: none !important; stroke-dashoffset: 0 !important; }
+}
+
+/* ---------- Effects layer ----------
+   Ripples, shine sweeps, glows and the ambient aurora. Same rules as above:
+   transform/opacity only, themed via tokens, killed under reduced motion. */
+
+/* Ripple: App.tsx appends a .ripple-wave span inside the clicked button.
+   Every button can host one — overflow hides the wave until it expands. */
+button {
+  position: relative;
+  overflow: hidden;
+}
+.ripple-wave {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-accent) 55%, transparent) 0%, color-mix(in srgb, var(--color-accent) 18%, transparent) 60%, transparent 72%);
+  transform: scale(0);
+  opacity: 0.8;
+  animation: rippleGrow 0.65s var(--ease-out-expo) forwards;
+}
+/* On accent-colored buttons the accent ripple would vanish — use light there. */
+.bg-accent .ripple-wave,
+.bg-correctgreen .ripple-wave {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.25) 55%, transparent 72%);
+}
+@keyframes rippleGrow {
+  to { transform: scale(1); opacity: 0; }
+}
+
+/* Shine sweep: a light bar that wipes across primary buttons on hover. */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 22%, rgba(255, 255, 255, 0.45) 48%, transparent 74%);
+  transform: translateX(-140%);
+  pointer-events: none;
+}
+.btn-shine:hover::after { animation: shineSweep 0.8s var(--ease-out-expo); }
+@keyframes shineSweep { to { transform: translateX(140%); } }
+
+/* Glow vocabulary: resting accent glow that deepens on hover, a ring-only
+   hover for ghost buttons, and a soft text halo for hero numbers. */
+.glow-accent {
+  box-shadow: 0 0 16px color-mix(in srgb, var(--color-accent) 30%, transparent), 0 4px 18px -4px rgba(0, 0, 0, 0.4);
+  transition: box-shadow var(--motion-fast) ease, transform var(--motion-fast) ease;
+}
+.glow-accent:hover { box-shadow: 0 0 30px color-mix(in srgb, var(--color-accent) 55%, transparent), 0 6px 22px -4px rgba(0, 0, 0, 0.5); }
+.glow-ring { transition: box-shadow var(--motion-fast) ease, transform var(--motion-fast) ease; }
+.glow-ring:hover { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent); }
+.text-glow { text-shadow: 0 0 24px color-mix(in srgb, var(--color-accent) 40%, transparent); }
+
+/* Ambient aurora: three slow, blurred accent blobs drifting behind the app. */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.aurora-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.13;
+  will-change: transform;
+}
+.aurora-blob-a { width: 55vmax; height: 55vmax; left: -15vmax; top: -20vmax; background: var(--color-accent); animation: auroraA 26s ease-in-out infinite alternate; }
+.aurora-blob-b { width: 45vmax; height: 45vmax; right: -18vmax; top: 30vh; background: var(--color-correct); animation: auroraB 32s ease-in-out infinite alternate; }
+.aurora-blob-c { width: 40vmax; height: 40vmax; left: 30vw; bottom: -25vmax; background: var(--color-accent); animation: auroraC 38s ease-in-out infinite alternate; }
+@keyframes auroraA { from { transform: translate(0, 0) scale(1); } to { transform: translate(12vw, 8vh) scale(1.15); } }
+@keyframes auroraB { from { transform: translate(0, 0) scale(1); } to { transform: translate(-10vw, -12vh) scale(0.9); } }
+@keyframes auroraC { from { transform: translate(0, 0) scale(1); } to { transform: translate(-8vw, -6vh) scale(1.1); } }
+
+/* Typing card: border + glow bloom while the session is focused. */
+.typing-card { transition: box-shadow 0.35s ease, border-color 0.35s ease; }
+.typing-card-focused {
+  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border)) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 28%, transparent), 0 0 36px color-mix(in srgb, var(--color-accent) 14%, transparent), 0 25px 50px -12px rgba(0, 0, 0, 0.55);
+}
+
+/* Caret: the pulse bar doubles as a small light source. */
+
+/* Results bottom-row cells: gentle lift on hover (works post-stagger). */
+.cell-pop { transition: transform var(--motion-fast) var(--ease-spring); }
+.cell-pop:hover { transform: translateY(-3px); }
+
+/* Gentle floating for trophy-class moments. */
+.float-y { animation: floatY 2.6s ease-in-out infinite; }
+@keyframes floatY {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora { display: none !important; }
+  .btn-shine::after { display: none !important; }
+  .ripple-wave { display: none !important; }
+  .float-y { animation: none !important; }
+  .cell-pop:hover { transform: none !important; }
+  .typing-card-focused { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55); }
+  .chart-fade-late { opacity: 1 !important; }
+}

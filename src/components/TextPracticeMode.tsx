@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import type { FC, ChangeEvent } from 'react';
+import type { FC, ChangeEvent, CSSProperties } from 'react';
 import { BookOpen, RefreshCw, CheckCircle2, FileText } from 'lucide-react';
 import { TEXT_PRACTICE_PARAGRAPHS } from '../utils/wordBanks';
 import type { UserSettings } from '../types';
@@ -78,17 +78,17 @@ export const TextPracticeMode: FC<{ settings: UserSettings }> = ({ settings }) =
     <div className="w-full max-w-4xl mx-auto px-4 py-4 animate-fade-in text-bodytext">
       <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-6 border-b border-darkborder">
         <div className="flex items-center gap-3"><div className="p-2.5 rounded-xl bg-accentmuted text-accent"><BookOpen className="w-6 h-6" /></div><div><h2 className="text-xl font-bold">Text & Literature Practice</h2><p className="text-xs text-mutedtext">Type complete sentences, paragraphs, and prose with punctuation</p></div></div>
-        <button onClick={() => resetPractice()} className="flex items-center gap-2 px-4 py-2 bg-darkcard hover:bg-darkborder text-bodytext hover:text-accent border border-darkborder rounded-xl text-xs font-bold"><RefreshCw className="w-4 h-4" />Restart</button>
+        <button onClick={() => resetPractice()} className="flex items-center gap-2 px-4 py-2 bg-darkcard hover:bg-darkborder text-bodytext hover:text-accent border border-darkborder rounded-xl text-xs font-bold transition-all active:scale-90 group"><RefreshCw className="w-4 h-4 transition-transform duration-500 group-hover:rotate-180" />Restart</button>
       </div>
       <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
-        {TEXT_PRACTICE_PARAGRAPHS.map((paragraph, idx) => <button key={idx} onClick={() => resetPractice(idx)} aria-pressed={selectedIdx === idx} className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all whitespace-nowrap flex items-center gap-2 ${selectedIdx === idx ? 'bg-accent text-black border-accent shadow-md' : 'bg-darkcard border-darkborder text-mutedtext hover:text-bodytext'}`}><FileText className="w-3.5 h-3.5" />{paragraph.title}</button>)}
+        {TEXT_PRACTICE_PARAGRAPHS.map((paragraph, idx) => <button key={idx} onClick={() => resetPractice(idx)} aria-pressed={selectedIdx === idx} className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all whitespace-nowrap flex items-center gap-2 active:scale-90 ${selectedIdx === idx ? 'bg-accent text-black border-accent shadow-md' : 'bg-darkcard border-darkborder text-mutedtext hover:text-bodytext'}`}><FileText className="w-3.5 h-3.5" />{paragraph.title}</button>)}
       </div>
       <div className="bg-darkcard border-2 border-darkborder rounded-2xl p-6 sm:p-8 shadow-xl space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-mutedtext pb-3 border-b border-darkborder">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-mutedtext pb-3 border-b border-darkborder stagger-item" style={{ '--stagger-i': 0 } as CSSProperties}>
           <span className="font-semibold text-bodytext italic">"{currentParagraph.title}" — {currentParagraph.author}</span>
           <div className="flex items-center gap-4 font-mono font-bold"><span className="text-accent">{wpm} WPM</span><span>{accuracy}% ACC</span></div>
         </div>
-        <div className="p-5 bg-darkbg rounded-xl border border-darkborder font-mono text-base sm:text-lg leading-relaxed text-left min-h-[140px] whitespace-pre-wrap">
+        <div className="p-5 bg-darkbg rounded-xl border border-darkborder font-mono text-base sm:text-lg leading-relaxed text-left min-h-[140px] whitespace-pre-wrap stagger-item" style={{ '--stagger-i': 1 } as CSSProperties}>
           {targetText.split('').map((char, idx) => {
             const typed = inputVal[idx];
             const charStyle = typed === undefined ? 'text-mutedtext' : typed === char ? 'text-accent font-semibold' : 'text-wrongred bg-[var(--color-wrong-bg)]';
@@ -96,7 +96,7 @@ export const TextPracticeMode: FC<{ settings: UserSettings }> = ({ settings }) =
           })}
         </div>
         <textarea ref={inputRef} value={inputVal} onChange={handleInput} onPaste={(e) => e.preventDefault()} onDrop={(e) => e.preventDefault()} readOnly={isFinished} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} aria-label="Practice text input" placeholder="Start typing the text above exactly as written..." rows={4} className="w-full bg-darkbg border-2 border-darkborder focus:border-accent rounded-xl p-4 font-mono text-base sm:text-lg outline-none text-bodytext resize-none placeholder:text-mutedtext shadow-inner" />
-        {isFinished && <div className="p-4 bg-accentmuted border border-accent rounded-xl text-center flex items-center justify-center gap-2 text-accent font-bold animate-fade-in"><CheckCircle2 className="w-5 h-5" /><span>Completed! Speed: {wpm} WPM • Accuracy: {accuracy}%</span></div>}
+        {isFinished && <div className="p-4 bg-accentmuted border border-accent rounded-xl text-center flex items-center justify-center gap-2 text-accent font-bold animate-pop-in"><CheckCircle2 className="w-5 h-5" /><span>Completed! Speed: {wpm} WPM • Accuracy: {accuracy}%</span></div>}
       </div>
     </div>
   );

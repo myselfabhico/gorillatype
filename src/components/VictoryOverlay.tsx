@@ -44,7 +44,7 @@ export const VictoryOverlay: FC<VictoryOverlayProps> = ({ goalMinutes, onDismiss
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onDismiss} />
       <div className="victory-glow relative w-[min(92vw,420px)] bg-darkcard border-2 border-correctgreen rounded-3xl p-8 text-center shadow-2xl animate-goal-pop">
         <div className="mx-auto w-20 h-20 rounded-full bg-correctgreen/15 border-2 border-correctgreen flex items-center justify-center victory-icon-pop">
-          <Trophy className="w-10 h-10 text-correctgreen" />
+          <Trophy className="w-10 h-10 text-correctgreen float-y" />
         </div>
         <h2 className="mt-5 text-2xl md:text-3xl font-extrabold tracking-tight text-correctgreen victory-text-glow">
           Victory: Daily Goal Achieved
@@ -54,7 +54,7 @@ export const VictoryOverlay: FC<VictoryOverlayProps> = ({ goalMinutes, onDismiss
         </p>
         <button
           onClick={onDismiss}
-          className="mt-6 px-8 py-3 rounded-xl bg-correctgreen hover:brightness-110 text-black font-bold text-sm shadow-lg transition-all hover:scale-[1.03] active:scale-[0.98]"
+          className="btn-shine mt-6 px-8 py-3 rounded-xl bg-correctgreen hover:brightness-110 text-black font-bold text-sm shadow-lg transition-all hover:scale-[1.03] active:scale-[0.98] glow-accent"
         >
           Keep Going
         </button>
