@@ -1,5 +1,5 @@
 import type { FC, ReactNode, CSSProperties } from 'react';
-import { X, Keyboard, BookOpen, Sliders, Check } from 'lucide-react';
+import { X, Keyboard, BookOpen, Sliders, Car, Check } from 'lucide-react';
 import type { AppMode } from '../types';
 
 interface ModesDrawerProps {
@@ -15,6 +15,7 @@ export const ModesDrawer: FC<ModesDrawerProps> = ({ isOpen, onClose, currentMode
     { id: 'typing-test', title: 'Typing Test', description: 'Timed speed tests with curated practice word lists', icon: <Keyboard className="w-5 h-5" /> },
     { id: 'text-practice', title: 'Text Practice', description: 'Practice paragraphs, literature excerpts, and code syntax', icon: <BookOpen className="w-5 h-5 text-accent" /> },
     { id: 'custom', title: 'Custom Mode', description: 'Your own text, punctuation, numbers, and test duration', icon: <Sliders className="w-5 h-5 text-accent" /> },
+    { id: 'race', title: 'Race Mode', description: 'Race AI or friends across a live track', icon: <Car className="w-5 h-5 text-accent" />, badge: 'new' },
   ];
 
   return (

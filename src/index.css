@@ -646,3 +646,64 @@ button {
   .typing-card-focused { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55); }
   .chart-fade-late { opacity: 1 !important; }
 }
+
+/* ============================================================
+   Race Mode — premium effects (all theme-token based)
+   ============================================================ */
+
+/* Right-side drawer entrance for Race Settings. */
+@keyframes raceDrawerIn {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.race-drawer-in { animation: raceDrawerIn 260ms var(--ease-out-expo) backwards; }
+
+/* Countdown numbers punch in on every tick (remount via key). */
+@keyframes countPop {
+  0% { transform: scale(0.4); opacity: 0; }
+  55% { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.count-pop { animation: countPop 320ms var(--ease-spring) backwards; }
+
+/* Green-light moment: the traffic light shell flashes once. */
+@keyframes lightFlash {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 55%, transparent); }
+  100% { box-shadow: 0 0 0 14px transparent; }
+}
+.light-flash { animation: lightFlash 700ms ease-out 1; }
+
+/* Bots breathe: a barely-there idle vibration so cars feel alive. */
+@keyframes carIdle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1px); }
+}
+.car-idle { animation: carIdle 1.6s ease-in-out infinite; }
+
+/* Round, accent-ringed color swatch inputs. */
+input[type='color'].race-color {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 2px solid var(--color-border);
+  border-radius: 9999px;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: transform var(--motion-fast) var(--ease-spring), border-color var(--motion-fast) ease;
+}
+input[type='color'].race-color:hover { transform: scale(1.12); border-color: var(--color-accent); }
+input[type='color'].race-color::-webkit-color-swatch-wrapper { padding: 2px; }
+input[type='color'].race-color::-webkit-color-swatch { border: none; border-radius: 9999px; }
+
+/* Finished racers get one celebratory lane pulse. */
+@keyframes laneFinish {
+  0% { box-shadow: inset 0 0 0 0 transparent; }
+  35% { box-shadow: inset 0 0 24px 2px color-mix(in srgb, var(--color-accent) 30%, transparent); }
+  100% { box-shadow: inset 0 0 0 0 transparent; }
+}
+.lane-finish { animation: laneFinish 900ms ease-out 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .race-drawer-in, .count-pop, .light-flash, .lane-finish { animation: none !important; }
+  .car-idle { animation: none !important; }
+}

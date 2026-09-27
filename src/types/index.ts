@@ -28,7 +28,8 @@ export type FontSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 export type AppMode =
   | 'typing-test'
   | 'text-practice'
-  | 'custom';
+  | 'custom'
+  | 'race';
 
 export interface UserProfile {
   id: string;

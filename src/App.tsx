@@ -13,6 +13,7 @@ import { ThemeDrawer } from './components/ThemeDrawer';
 import { LanguageModal } from './components/LanguageModal';
 import { AuthModal } from './components/AuthModal';
 import { TextPracticeMode } from './components/TextPracticeMode';
+import { RaceMode } from './components/RaceMode';
 import { CustomMode } from './components/CustomMode';
 import { GoalRing } from './components/GoalRing';
 import { GoalModal } from './components/GoalModal';
@@ -184,6 +185,7 @@ export function App() {
     'typing-test': 'Typing Test',
     'text-practice': 'Text Practice',
     custom: 'Custom Mode',
+    race: 'Race Mode',
   };
 
   return (
@@ -203,6 +205,7 @@ export function App() {
             <>
               {currentMode === 'typing-test' && <TypingWorkspace settings={settings} onUpdateSettings={handleUpdateSettings} onFinishTest={handleFinishTest} onToggleSettingsBar={() => setIsSettingsBarOpen((previous) => !previous)} isSettingsOpen={isSettingsBarOpen} onOpenLanguageModal={() => setIsLanguageModalOpen(true)} customText={customText} mode={testMode} blocked={blocked} onTestActiveChange={(active) => setBackspaceLocked(active)} />}
               {currentMode === 'text-practice' && <TextPracticeMode settings={settings} />}
+              {currentMode === 'race' && <RaceMode settings={settings} playerName={profile?.username} blocked={blocked} />}
               {currentMode === 'custom' && <CustomMode onStartCustomTest={(text, duration) => {
                 setCustomText(text.trim());
                 setCustomActive(true); // stays in Custom Mode while the launched test runs
