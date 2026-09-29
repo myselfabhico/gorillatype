@@ -39,7 +39,7 @@ export const SettingsBar: FC<SettingsBarProps> = ({ isOpen, settings, onUpdateSe
 
   return (
     <div className="w-full bg-darkcard border-y border-darkborder py-3.5 px-4 mb-5 shadow-inner animate-slide-down">
-      <div className="max-w-6xl mx-auto flex flex-col gap-3.5 text-xs text-bodytext">
+      <div className="max-w-4xl mx-auto flex flex-col gap-3.5 text-xs text-bodytext">
         <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-darkborder stagger-item" style={{ '--stagger-i': 0 } as CSSProperties}>
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-mutedtext font-semibold uppercase tracking-wider text-[11px] flex items-center gap-1"><SlidersHorizontal className="w-3.5 h-3.5 text-accent" />Keyboard Shortcuts:</span>

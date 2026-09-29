@@ -637,7 +637,7 @@ export const RaceMode: FC<{ settings: UserSettings; playerName?: string; blocked
   const isPreRace = phase !== 'racing';
 
   return (
-    <div className="w-full max-w-5xl mx-auto flex flex-col gap-4 animate-fade-in" onClick={handlePanelClick}>
+    <div className="w-full max-w-4xl mx-auto flex flex-col gap-4 animate-fade-in" onClick={handlePanelClick}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-accentmuted text-accent">

@@ -477,7 +477,12 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
 
   const timeLeft = Math.max(0, Math.ceil(settings.duration - view.elapsed));
   const metrics = getMetrics(view, view.elapsed);
-  const fontClasses = { xs: 'text-base leading-relaxed', sm: 'text-lg leading-relaxed', md: 'text-xl md:text-2xl leading-loose', lg: 'text-2xl md:text-3xl leading-loose', xl: 'text-3xl md:text-4xl leading-loose' };
+  // The word viewport always shows exactly three full lines (plus a 4px
+  // sliver of the next, like monkeytype) no matter the font size or the
+  // user's browser zoom: the height is derived from the line-height itself
+  // (6em for `leading-loose`, 4.875em for `leading-relaxed`) plus the two
+  // 8px flex row gaps. Fixed pixel heights drift with zoom; em does not.
+  const fontClasses = { xs: 'text-base leading-relaxed h-[calc(4.875em_+_1.25rem)]', sm: 'text-lg leading-relaxed h-[calc(4.875em_+_1.25rem)]', md: 'text-xl md:text-2xl leading-loose h-[calc(6em_+_1.25rem)]', lg: 'text-2xl md:text-3xl leading-loose h-[calc(6em_+_1.25rem)]', xl: 'text-3xl md:text-4xl leading-loose h-[calc(6em_+_1.25rem)]' };
   const chartPoints = [{ second: 0, wpm: 0, rawWpm: 0, errors: 0, burst: 0 }, ...view.history];
   const maximum = Math.max(30, ...chartPoints.map((point) => point.rawWpm));
   const chartPath = (field: 'wpm' | 'rawWpm') => chartPoints.map((point, index) => `${index ? 'L' : 'M'} ${10 + point.second / Math.max(1, view.elapsed) * 580} ${110 - point[field] / maximum * 100}`).join(' ');
@@ -485,7 +490,7 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
 
   return (
     <div className="w-full max-w-4xl mx-auto px-2 sm:px-4 py-2 select-none" inert={blocked}>
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-5 [@media(max-height:830px)]:mb-3">
         <div className="flex flex-wrap items-center gap-3">
           <button onClick={onOpenLanguageModal} className={`${buttonClass} flex items-center gap-2 px-3 text-xs font-semibold`}>
             <span className="capitalize">{mode === 'custom' ? 'Custom text' : settings.language.replace('-', ' ')}</span>
@@ -535,7 +540,7 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
         {view.idleWarning && <div role="status" className="absolute top-2 left-1/2 -translate-x-1/2 z-20 bg-wrongred text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg flex items-center gap-2"><AlertTriangle className="w-4 h-4" /><span>Keep typing! The test will reset in 5 seconds.</span></div>}
         <div className="relative">
           {!isFocused && !blocked && <div onClick={() => inputRef.current?.focus({ preventScroll: true })} className="absolute inset-0 z-10 bg-darkbg/80 backdrop-blur-sm flex flex-col items-center justify-center gap-2 text-bodytext cursor-pointer animate-fade-in"><MousePointerClick className="w-8 h-8 text-accent float-y" /><span>Click here to continue (or press TAB)</span></div>}
-          <div ref={wordsContainerRef} className={`relative w-full h-32 overflow-hidden font-mono ${fontClasses[settings.fontSize]} flex content-start flex-wrap gap-x-3 gap-y-2 tracking-wide text-left`}>
+          <div ref={wordsContainerRef} className={`relative w-full overflow-hidden font-mono ${fontClasses[settings.fontSize]} flex content-start flex-wrap gap-x-3 gap-y-2 tracking-wide text-left [mask-image:linear-gradient(to_bottom,black_calc(100%_-_16px),transparent)]`}>
             {view.words.map((item, index) => {
               const current = index === view.index;
               const showCaretEl = settings.showCaret && isFocused;
@@ -579,14 +584,22 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
             })}
           </div>
         </div>
-        <div className="mt-6 pt-5 border-t border-darkborder flex items-center justify-between gap-4">
+        <div className="mt-5 pt-4 border-t border-darkborder flex items-center justify-between gap-4">
           <div className="min-w-0 flex-1 text-xs text-mutedtext font-medium">Type in the paragraph above — it captures your keystrokes directly.</div>
           <button onClick={onRestart} className={`${buttonClass} px-5 py-3 flex items-center gap-2 text-sm font-bold group`} title="Restart Test"><RefreshCw className="w-4 h-4 transition-transform duration-500 group-hover:rotate-180" /><span className="hidden sm:inline">Reset</span></button>
         </div>
       </div>
-      <div className="mt-4 bg-darkcard border border-darkborder rounded-xl p-4">
+      <div className="mt-5 [@media(max-height:830px)]:mt-3 bg-darkcard border-2 border-darkborder rounded-2xl p-4 sm:p-5 shadow-xl">
         <div className="flex flex-wrap justify-between gap-3 text-xs text-mutedtext font-mono"><span>WPM <strong key={metrics.wpm} className="text-accent stat-tick">{metrics.wpm}</strong></span><span>Raw <strong key={`raw${metrics.rawWpm}`} className="text-bodytext stat-tick">{metrics.rawWpm}</strong></span><span>Accuracy <strong key={`acc${metrics.accuracy}`} className="text-accent stat-tick">{metrics.accuracy}%</strong></span><span>Errors <strong key={`err${view.wrongAttempts}`} className="text-wrongred stat-tick">{view.wrongAttempts}</strong></span></div>
-        {settings.showChart && <svg viewBox="0 0 600 120" role="img" aria-label="Live WPM and raw WPM chart" className="w-full h-32 mt-3"><path d="M 10 110 H 590" fill="none" stroke="var(--color-border)" /><path d={chartPath('rawWpm')} fill="none" stroke="var(--color-text-muted)" strokeWidth="2" strokeDasharray="4 2" /><path d={chartPath('wpm')} fill="none" stroke="var(--color-accent)" strokeWidth="3" /></svg>}
+        {settings.showChart && (
+          <div className="relative mt-3">
+            {view.history.length > 0 ? (
+              <svg viewBox="0 0 600 120" role="img" aria-label="Live WPM and raw WPM chart" className="w-full h-32"><path d="M 10 110 H 590" fill="none" stroke="var(--color-border)" /><path d={chartPath('rawWpm')} fill="none" stroke="var(--color-text-muted)" strokeWidth="2" strokeDasharray="4 2" /><path d={chartPath('wpm')} fill="none" stroke="var(--color-accent)" strokeWidth="3" /></svg>
+            ) : (
+              <div className="h-32 flex items-center justify-center border-b border-darkborder text-xs text-mutedtext/70">your speed curve appears here as you type</div>
+            )}
+          </div>
+        )}
       </div>
       {portalRoot && createPortal(
         <VirtualKeyboard nextChar={nextChar} press={press} settings={settings} onUpdateSettings={onUpdateSettings} />,

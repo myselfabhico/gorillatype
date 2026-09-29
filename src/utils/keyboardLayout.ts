@@ -20,10 +20,13 @@ export interface VirtualKey {
   home?: boolean;
 }
 
-/** Keyboard coordinate system: 15 key units wide, 5 flat rows (0.5u each). */
-export const ROW_H = 0.5;
+/**
+ * Keyboard coordinate system: 15 key units wide, 5 rows. Row pitch 0.72u gives
+ * near-square keycaps, matching the reference board's proportions.
+ */
+export const ROW_H = 0.72;
 /** Full stage height in units: keyboard rows + a hand zone below. */
-export const STAGE_U = 3.6;
+export const STAGE_U = 4.85;
 
 type KeyDef = [id: string, label: string, shiftLabel: string | null, w: number, finger: FingerId, mod?: boolean];
 
@@ -34,24 +37,24 @@ const ROW_DEFS: KeyDef[][] = [
     ['backquote', '`', '~', 1, 'lpinky'], ['1', '1', '!', 1, 'lpinky'], ['2', '2', '@', 1, 'lring'], ['3', '3', '#', 1, 'lmiddle'],
     ['4', '4', '$', 1, 'lindex'], ['5', '5', '%', 1, 'lindex'], ['6', '6', '^', 1, 'rindex'], ['7', '7', '&', 1, 'rindex'],
     ['8', '8', '*', 1, 'rmiddle'], ['9', '9', '(', 1, 'rring'], ['0', '0', ')', 1, 'rpinky'], ['minus', '-', '_', 1, 'rpinky'],
-    ['equal', '=', '+', 1, 'rpinky'], ['backspace', '⌫', null, 2, 'rpinky', true],
+    ['equal', '=', '+', 1, 'rpinky'], ['backspace', 'delete ⌫', null, 2, 'rpinky', true],
   ],
   [
-    ['tab', 'tab', null, 1.5, 'lpinky', true], ['q', 'q', null, 1, 'lpinky'], ['w', 'w', null, 1, 'lring'], ['e', 'e', null, 1, 'lmiddle'],
+    ['tab', 'tab ⇥', null, 1.5, 'lpinky', true], ['q', 'q', null, 1, 'lpinky'], ['w', 'w', null, 1, 'lring'], ['e', 'e', null, 1, 'lmiddle'],
     ['r', 'r', null, 1, 'lindex'], ['t', 't', null, 1, 'lindex'], ['y', 'y', null, 1, 'rindex'], ['u', 'u', null, 1, 'rindex'],
     ['i', 'i', null, 1, 'rmiddle'], ['o', 'o', null, 1, 'rring'], ['p', 'p', null, 1, 'rpinky'], ['bracket-left', '[', '{', 1, 'rpinky'],
     ['bracket-right', ']', '}', 1, 'rpinky'], ['backslash', '\\', '|', 1.5, 'rpinky'],
   ],
   [
-    ['caps', 'caps', null, 1.75, 'lpinky', true], ['a', 'a', null, 1, 'lpinky'], ['s', 's', null, 1, 'lring'], ['d', 'd', null, 1, 'lmiddle'],
+    ['caps', 'caps lock ⇪', null, 1.75, 'lpinky', true], ['a', 'a', null, 1, 'lpinky'], ['s', 's', null, 1, 'lring'], ['d', 'd', null, 1, 'lmiddle'],
     ['f', 'f', null, 1, 'lindex'], ['g', 'g', null, 1, 'lindex'], ['h', 'h', null, 1, 'rindex'], ['j', 'j', null, 1, 'rindex'],
     ['k', 'k', null, 1, 'rmiddle'], ['l', 'l', null, 1, 'rring'], ['semicolon', ';', ':', 1, 'rpinky'], ['quote', "'", '"', 1, 'rpinky'],
-    ['enter', '⏎', null, 2.25, 'rpinky', true],
+    ['enter', 'enter ⏎', null, 2.25, 'rpinky', true],
   ],
   [
-    ['lshift', 'shift', null, 2.25, 'lpinky', true], ['z', 'z', null, 1, 'lpinky'], ['x', 'x', null, 1, 'lring'], ['c', 'c', null, 1, 'lmiddle'],
+    ['lshift', 'shift ⇧', null, 2.25, 'lpinky', true], ['z', 'z', null, 1, 'lpinky'], ['x', 'x', null, 1, 'lring'], ['c', 'c', null, 1, 'lmiddle'],
     ['v', 'v', null, 1, 'lindex'], ['b', 'b', null, 1, 'lindex'], ['n', 'n', null, 1, 'rindex'], ['m', 'm', null, 1, 'rindex'],
-    ['comma', ',', '<', 1, 'rmiddle'], ['period', '.', '>', 1, 'rring'], ['slash', '/', '?', 1, 'rpinky'], ['rshift', 'shift', null, 2.75, 'rpinky', true],
+    ['comma', ',', '<', 1, 'rmiddle'], ['period', '.', '>', 1, 'rring'], ['slash', '/', '?', 1, 'rpinky'], ['rshift', '⇧shift', null, 2.75, 'rpinky', true],
   ],
   [
     ['lctrl', 'ctrl', null, 1.25, 'lpinky', true], ['lwin', 'win', null, 1.25, 'lpinky', true], ['lalt', 'alt', null, 1.25, 'lpinky', true],

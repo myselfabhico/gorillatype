@@ -189,7 +189,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-darkbg text-bodytext font-sans antialiased transition-colors duration-200">
+    <div className="min-h-screen flex flex-col bg-darkbg text-bodytext font-sans antialiased transition-colors duration-200">
       <div className="aurora" aria-hidden="true">
         <div className="aurora-blob aurora-blob-a" />
         <div className="aurora-blob aurora-blob-b" />
@@ -198,7 +198,7 @@ export function App() {
       <div className="relative z-10">
         <Navbar onOpenModes={() => setIsModesDrawerOpen(true)} onOpenTheme={() => setIsThemeDrawerOpen(true)} onOpenLanguage={() => setIsLanguageModalOpen(true)} onOpenAuth={() => setIsAuthModalOpen(true)} onOpenGoal={() => setIsGoalModalOpen(true)} goalActive={dailyGoal.goal !== null} goalCompleted={dailyGoal.goal?.completed === true} profile={profile} currentModeName={modeTitles[currentMode === 'typing-test' ? testMode : currentMode]} />
         <SettingsBar isOpen={isSettingsBarOpen} settings={settings} onUpdateSettings={handleUpdateSettings} onToggleCustom={handleToggleCustom} customActive={customActive} testLocked={backspaceLocked} />
-        <main className="max-w-6xl mx-auto px-4 pt-4 pb-10 w-full">
+        <main className="max-w-4xl mx-auto px-4 pt-3 [@media(max-height:830px)]:pt-2 w-full">
           {lastResult ? (
             <ResultsCard record={lastResult} historyPoints={lastHistoryPoints} onRestart={handleRestart} keyInsights={keyInsights} keyInsightsSummary={keyInsightsSummary} />
           ) : (
@@ -217,7 +217,10 @@ export function App() {
           )}
         </main>
       </div>
-      <div id="virtual-keyboard-root" className="relative z-10 w-full flex justify-center px-4 pb-6" />        <ModesDrawer isOpen={isModesDrawerOpen} onClose={() => setIsModesDrawerOpen(false)} currentMode={currentMode === 'typing-test' ? testMode : currentMode} onSelectMode={handleSelectMode} />
+      {/* Mirrors the card column's side padding (main px-4 + workspace
+          px-2/sm:px-4), so the keyboard's edges line up with the typing
+          card's edges at every width and zoom level. */}
+      <div id="virtual-keyboard-root" className="relative z-10 w-full max-w-4xl mx-auto px-6 sm:px-8 pt-3 pb-5 [@media(max-height:830px)]:pt-2 [@media(max-height:830px)]:pb-3" />        <ModesDrawer isOpen={isModesDrawerOpen} onClose={() => setIsModesDrawerOpen(false)} currentMode={currentMode === 'typing-test' ? testMode : currentMode} onSelectMode={handleSelectMode} />
       <ThemeDrawer isOpen={isThemeDrawerOpen} onClose={() => setIsThemeDrawerOpen(false)} currentTheme={settings.theme} onSelectTheme={handleSelectTheme} />
       <LanguageModal isOpen={isLanguageModalOpen} onClose={() => setIsLanguageModalOpen(false)} currentLanguage={settings.language} onSelectLanguage={handleSelectLanguage} />
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} profile={profile} onUpdateProfile={setProfile} />

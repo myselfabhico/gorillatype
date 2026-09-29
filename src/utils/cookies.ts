@@ -11,7 +11,10 @@ const options = { expires: 365, sameSite: 'lax' as const, path: '/', secure: loc
 export const DEFAULT_SETTINGS: UserSettings = {
   theme: 'default-dark', keyboardSound: 'standard', keyboardVolume: 0.7, websiteSfx: true, backspaceEnabled: true,
   fontSize: 'md', duration: 60,
-  showTimer: true, showChart: true, showCaret: true,
+  showTimer: true, showCaret: true,
+  // The live chart stays hidden on a fresh profile so the first screen is just
+  // words, hands and keyboard — users can re-enable it via the Chart toggle.
+  showChart: false,
   punctuation: false, numbers: false,
   difficulty: 'easy', language: 'english', smoothScroll: true,
   showKeyboard: true, showHands: true, showFingerZones: false,

@@ -1,5 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { EyeOff, SlidersHorizontal } from 'lucide-react';
 import type { UserSettings } from '../types';
 import { FINGER_COLORS, KEYBOARD, ROW_H, STAGE_U, findKeyForChar, keyCenter } from '../utils/keyboardLayout';
@@ -35,9 +34,9 @@ interface HandTarget {
  * All local geometry below is for the LEFT hand (y negative = toward keys);
  * the right hand mirrors x.
  */
-const HOME_Y = 1.25; // global y of the home-row key centers
-const WRIST: Record<HandSide, Pos> = { left: { x: 4.0, y: 2.8 }, right: { x: 11.0, y: 2.8 } };
-const ELBOW: Record<HandSide, Pos> = { left: { x: 3.0, y: 5.3 }, right: { x: 12.0, y: 5.3 } };
+const HOME_Y = 1.8; // global y of the home-row key centers (0.72u pitch)
+const WRIST: Record<HandSide, Pos> = { left: { x: 4.2, y: 3.3 }, right: { x: 10.8, y: 3.3 } };
+const ELBOW: Record<HandSide, Pos> = { left: { x: 2.9, y: 5.6 }, right: { x: 12.1, y: 5.6 } };
 
 type Digit = 'pinky' | 'ring' | 'middle' | 'index' | 'thumb';
 const DIGITS: Digit[] = ['pinky', 'ring', 'middle', 'index', 'thumb'];
@@ -50,12 +49,14 @@ const FINGER_OF: Record<HandSide, Record<Digit, FingerId>> = {
 interface DigitDef {
   base: Pos;
   rest: Pos;
-  /** Bone shaft half-width. */
+  /** Flesh capsule half-width. */
   w: number;
   /** Skin radius, only used by the faint tissue halo outline. */
   r: number;
   /** Max sideways lean of the fingertip from its column. */
   lean: number;
+  /** True for the thumb (different segment proportions + no nail). */
+  thumb?: boolean;
 }
 
 /**
@@ -66,27 +67,27 @@ interface DigitDef {
  * rest.y pins each resting fingertip onto its home-row key.
  */
 const LEFT_DIGITS: Record<Digit, DigitDef> = {
-  pinky: { base: { x: -1.0, y: -0.3 }, rest: { x: -1.5, y: -1.47 }, w: 0.042, r: 0.16, lean: 0.5 },
-  ring: { base: { x: -0.36, y: -0.36 }, rest: { x: -0.5, y: -1.55 }, w: 0.046, r: 0.175, lean: 0.35 },
-  middle: { base: { x: 0.34, y: -0.38 }, rest: { x: 0.5, y: -1.57 }, w: 0.05, r: 0.185, lean: 0.28 },
-  index: { base: { x: 1.02, y: -0.32 }, rest: { x: 1.5, y: -1.53 }, w: 0.047, r: 0.18, lean: 0.32 },
-  thumb: { base: { x: 1.12, y: 0.0 }, rest: { x: 1.88, y: -0.78 }, w: 0.058, r: 0.22, lean: 0.55 },
+  pinky: { base: { x: -1.3, y: -0.45 }, rest: { x: -1.85, y: -1.5 }, w: 0.088, r: 0.24, lean: 0.5 },
+  ring: { base: { x: -0.6, y: -0.5 }, rest: { x: -0.72, y: -1.55 }, w: 0.096, r: 0.26, lean: 0.35 },
+  middle: { base: { x: 0.55, y: -0.52 }, rest: { x: 0.75, y: -1.57 }, w: 0.1, r: 0.27, lean: 0.28 },
+  index: { base: { x: 1.3, y: -0.45 }, rest: { x: 1.82, y: -1.53 }, w: 0.098, r: 0.26, lean: 0.32 },
+  thumb: { base: { x: 1.5, y: 0.05 }, rest: { x: 2.3, y: -0.95 }, w: 0.12, r: 0.32, lean: 0.55, thumb: true },
 };
 
 /** Webbing dips between finger bases, thumb-webbing, then palm silhouette anchors. */
 const LEFT_OUTLINE = {
   webs: [
-    { x: -0.6, y: -0.36 },
-    { x: 0, y: -0.38 },
-    { x: 0.6, y: -0.36 },
+    { x: -0.9, y: -0.58 },
+    { x: 0, y: -0.6 },
+    { x: 0.9, y: -0.58 },
   ],
-  thumbWeb: { x: 1.0, y: -0.28 },
-  wristL: { x: -0.6, y: 0.66 },
-  wristR: { x: 0.6, y: 0.66 },
-  palmSideC1: { x: -1.06, y: 0.44 },
-  palmSideC2: { x: -1.12, y: -0.04 },
-  thenar: { x: 1.36, y: 0.3 },
-  wristMid: { x: 0, y: 0.84 },
+  thumbWeb: { x: 1.4, y: -0.44 },
+  wristL: { x: -1.15, y: 1.1 },
+  wristR: { x: 1.15, y: 1.1 },
+  palmSideC1: { x: -1.72, y: 0.7 },
+  palmSideC2: { x: -1.78, y: -0.08 },
+  thenar: { x: 2.02, y: 0.52 },
+  wristMid: { x: 0, y: 1.42 },
 };
 
 const FINGER_LABELS: Record<FingerId, string> = {
@@ -232,60 +233,64 @@ function useAnimatedPose(target: Pose): Pose {
 }
 
 /**
- * A radiograph bone: a spindle with a slim shaft and flared, rounded condyle
- * ends — the bright "drumstick" shapes you see on an X-ray plate. The rounded
- * articular end points at `b`.
+ * One 3D-lit flesh segment: a capsule with a top sheen highlight and a dark
+ * occlusion edge. Stacked with slight overlaps these read as soft, rounded
+ * fingers lit from above — no hard outlines anywhere.
  */
-function Bone({ a, b, w, variant = 'phalanx' }: { a: Pos; b: Pos; w: number; variant?: 'phalanx' | 'long' | 'tuft' }) {
+function FleshCapsule({ a, b, w, round = false, pressed = false, className = '' }: { a: Pos; b: Pos; w: number; round?: boolean; pressed?: boolean; className?: string }) {
   const d = sub(b, a);
   const L = Math.max(0.05, len(d));
   const angle = (Math.atan2(d.x, -d.y) * 180) / Math.PI;
-  // Chunky radiograph bones: wide base flare, slim shaft, broad articular head.
-  const base = w * (variant === 'long' ? 1.7 : 1.55);
-  const head = w * (variant === 'long' ? 2.0 : variant === 'tuft' ? 1.9 : 1.75);
-  const shaft = w * (variant === 'long' ? 0.86 : 0.8);
-  const tipArc = variant === 'tuft' ? -L * 1.08 : -L * 1.2;
   const p = (x: number, y: number) => `${f(x)} ${f(y)}`;
-  const dd = [
-    `M ${p(-base, 0)}`,
-    `C ${p(-base * 1.16, -L * 0.08)} ${p(-shaft * 1.12, -L * 0.3)} ${p(-shaft, -L * 0.5)}`,
-    `C ${p(-shaft, -L * 0.74)} ${p(-head * 1.08, -L * 0.9)} ${p(-head, -L)}`,
-    `Q ${p(0, tipArc)} ${p(head, -L)}`,
-    `C ${p(head * 1.08, -L * 0.9)} ${p(shaft, -L * 0.74)} ${p(shaft, -L * 0.5)}`,
-    `C ${p(shaft * 1.12, -L * 0.3)} ${p(base * 1.16, -L * 0.08)} ${p(base, 0)}`,
-    `Q ${p(0, base * 0.8)} ${p(-base, 0)}`,
+  const body = [
+    `M ${p(-w, 0)}`,
+    `L ${p(-w, -L)}`,
+    `A ${f(w)} ${f(w)} 0 0 1 ${p(w, -L)}`,
+    `L ${p(w, 0)}`,
+    round ? `A ${f(w)} ${f(w)} 0 0 1 ${p(-w, 0)} Z` : 'Z',
+  ].join(' ');
+  // Sheen: a slim light band hugging the left/top of the segment, like a
+  // softbox highlight. Blur melts it into the body.
+  const sheenW = w * 0.34;
+  const sheen = [
+    `M ${p(-w * 0.62, -L * 0.12)}`,
+    `L ${p(-w * 0.62, -L * 0.86)}`,
+    `A ${f(sheenW)} ${f(sheenW)} 0 0 1 ${p(-w * 0.62 + sheenW * 2, -L * 0.86)}`,
+    `L ${p(-w * 0.62 + sheenW * 2, -L * 0.12)}`,
     'Z',
   ].join(' ');
   return (
-    <g className="vk-bone" style={{ transform: `translate(${f(a.x)}px, ${f(a.y)}px) rotate(${angle.toFixed(2)}deg)` }}>
-      <path className="vk-bone-shape" d={dd} />
-      {/* Mottled density speckle inside the bone, like the grain on a film plate */}
-      <path className="vk-bone-grain" d={dd} />
-      {/* Brighter condyle at the articular end, like a radiograph joint head */}
-      <ellipse className="vk-condyle" cx={0} cy={-L} rx={head * 0.82} ry={head * 0.64} />
+    <g
+      className={`vk-capsule-g ${className}`}
+      style={{ transform: `translate(${f(a.x)}px, ${f(a.y)}px) rotate(${angle.toFixed(2)}deg)` }}
+    >
+      <path className="vk-capsule-rim" d={body} strokeWidth={w * 0.5} />
+      <path className={`vk-capsule${pressed ? ' vk-capsule-down' : ''}`} d={body} />
+      <path className="vk-capsule-sheen" d={sheen} filter="url(#vkSheen)" />
+      {/* Fingernail on the distal segment: a pale oval near the tip */}
+      {round && <ellipse className="vk-nail" cx={0} cy={-L + w * 0.78} rx={w * 0.52} ry={w * 0.62} />}
     </g>
   );
 }
 
-/** One finger: a chain of spindle phalanges with visible joint gaps between them. */
-function Finger({ base, tip, def, isTarget, pressed, color, curl }: {
+/** One finger: a chain of soft flesh capsules with a rounded fingertip. */
+function Finger({ base, tip, def, isTarget, pressed, curl }: {
   base: Pos;
   tip: Pos;
   def: DigitDef;
   isTarget: boolean;
   pressed: boolean;
-  color: string;
   curl: number;
 }) {
-  const thumb = def.w > 0.042;
-  // Phalanx chains stop short of each joint so the dark gap between bones
-  // shows through — the defining look of an X-ray.
-  const segs: Array<[number, number, 'phalanx' | 'long' | 'tuft']> = thumb
-    ? [[0, 0.46, 'long'], [0.5, 0.8, 'phalanx'], [0.84, 1, 'tuft']]
-    : [[0, 0.43, 'phalanx'], [0.47, 0.77, 'phalanx'], [0.81, 1, 'tuft']];
+  const thumb = Boolean(def.thumb);
+  // Three capsule segments per finger, slight overlaps so the joints read as
+  // continuous flesh with soft creases where the capsules meet.
+  const segs: Array<[number, number, boolean]> = thumb
+    ? [[0, 0.5, false], [0.44, 0.82, false], [0.78, 1, true]]
+    : [[0, 0.46, false], [0.42, 0.78, false], [0.74, 1, true]];
   const d = sub(tip, base);
   // Flexion during a press: the fingertip stays pinned to the key while the
-  // interior joints draw slightly toward the palm and the distal phalanx
+  // interior joints draw slightly toward the palm and the distal capsule
   // unrolls to keep contact — how a real finger articulates a keystroke.
   // Bow depth scales with the finger's own length (capped) so short digits
   // like the thumb don't bow proportionally deeper than long ones.
@@ -294,15 +299,15 @@ function Finger({ base, tip, def, isTarget, pressed, color, curl }: {
   return (
     <g
       className={cx('vk-finger', isTarget && 'vk-finger-target', pressed && 'vk-finger-pressed')}
-      style={{ '--finger-color': color } as CSSProperties}
     >
-      {segs.map(([s, e, variant], index) => (
-        <Bone
+      {segs.map(([s, e, rounded], index) => (
+        <FleshCapsule
           key={index}
           a={jointAt(s)}
           b={jointAt(e)}
-          w={def.w * [1, 0.86, 0.72][index]}
-          variant={variant}
+          w={def.w * [1, 0.9, 0.78][index]}
+          round={rounded}
+          pressed={pressed && index === segs.length - 1}
         />
       ))}
     </g>
@@ -376,7 +381,6 @@ function Hand({ side, target, pressedFinger, shake, dip }: {
 
   const arm = sub(wrist, elbow);
   const armDir = norm(arm);
-  const perp = { x: armDir.y, y: -armDir.x };
 
   const mySide = side === 'left' ? 'l' : 'r';
   const dipClass = dip && dip.side === mySide ? (dip.seq % 2 ? 'vk-dip-a' : 'vk-dip-b') : undefined;
@@ -384,7 +388,8 @@ function Hand({ side, target, pressedFinger, shake, dip }: {
 
   const tissueD = handOutline(side, pose.tips);
 
-  // Metacarpals fan from the palm center to the knuckles (left table, mirrored).
+  // Metacarpal flesh ridges fan from the palm center to the knuckles
+  // (left table, mirrored) — soft capsules under the palm surface.
   const palmCenter: Pos = { x: 0.05 * m, y: 0.32 };
   const metas = (['pinky', 'ring', 'middle', 'index'] as Digit[]).map((digit) => {
     const def = LEFT_DIGITS[digit];
@@ -393,37 +398,31 @@ function Hand({ side, target, pressedFinger, shake, dip }: {
       x: palmCenter.x + (knuckle.x - palmCenter.x) * 0.24,
       y: palmCenter.y + (knuckle.y - palmCenter.y) * 0.24,
     };
-    return { start, knuckle, w: def.w * 0.95 };
+    return { start, knuckle, w: def.w * 0.92, digit };
   });
-  // Carpal pebbles clustered at the wrist, like the bones on an X-ray plate.
-  const carpals: Array<{ x: number; y: number; r: number }> = [
-    { x: -0.17 * m, y: 0.16, r: 0.095 },
-    { x: 0.01, y: 0.09, r: 0.105 },
-    { x: 0.19 * m, y: 0.15, r: 0.09 },
-    { x: -0.1 * m, y: 0.33, r: 0.08 },
-    { x: 0.1 * m, y: 0.31, r: 0.085 },
-    { x: -0.005, y: 0.47, r: 0.075 },
-  ];
-
   return (
     <g className="vk-hand">
-      {/* Forearm: radius + ulna running in from below, flaring at the wrist.
-          Thick like the reference plate — the radius especially. */}
-      <Bone a={add(elbow, mul(perp, 0.19))} b={add(wrist, mul(perp, 0.3))} w={0.1} variant="long" />
-      <Bone a={sub(elbow, mul(perp, 0.16))} b={sub(wrist, mul(perp, 0.26))} w={0.07} variant="long" />
+      {/* Forearm: one thick soft capsule running in from below the stage. */}
+      <FleshCapsule a={elbow} b={add(wrist, mul(armDir, 0.1))} w={0.44} />
       <g className="vk-palm-move" style={{ transform: `translate(${f(wrist.x)}px, ${f(wrist.y)}px) rotate(${tilt.toFixed(2)}deg)` }}>
         <g className="vk-breathe">
           <g className={dipClass}>
             {/* key forces a remount so the shake animation restarts on every error */}
             <g key={shake?.seq ?? 0} className={shakeClass}>
-              {/* Faint soft-tissue halo under the skeleton */}
-              <path className="vk-tissue" d={tissueD} filter="url(#vkTissue)" />
+              {/* Flesh: grounded dark under-copy, lit gradient body, rim line —
+                  the skeleton draws on top so the bones read as inside. */}
+              <path className="vk-skin-under" d={tissueD} transform="translate(0, 0.03)" />
+              <path className="vk-skin-fill" d={tissueD} />
+              {/* Knuckle sheen: light pools across the metacarpal knuckles. */}
+              <ellipse className="vk-skin-sheen" cx={0.05 * m} cy={-0.28} rx={0.62} ry={0.24} filter="url(#vkSheen)" />
+              <path className="vk-skin-rim" d={tissueD} />
               {metas.map((bone, index) => (
-                <Bone key={`m${index}`} a={bone.start} b={bone.knuckle} w={bone.w} variant="long" />
+                <FleshCapsule key={`m${index}`} a={bone.start} b={bone.knuckle} w={bone.w} />
               ))}
-              {carpals.map((c, index) => (
-                <circle key={`c${index}`} className="vk-carpal" cx={c.x} cy={c.y} r={c.r} />
-              ))}
+              {/* Thumb pad: the thenar bulge, merged into the palm silhouette. */}
+              <ellipse className="vk-capsule" cx={0.82 * m} cy={0.3} rx={0.52} ry={0.62} transform={`rotate(${-22 * m} ${f(0.82 * m)} 0.3)`} />
+              {/* Wrist crease: a slim soft arc where the palm meets the forearm. */}
+              <path className="vk-wrist-crease" d={`M ${f(-0.55)} ${f(0.72)} Q ${f(0)} ${f(1.02)} ${f(0.55)} ${f(0.72)}`} />
               {DIGITS.map((digit) => {
                 const id = FINGER_OF[side][digit];
                 const def = LEFT_DIGITS[digit];
@@ -435,7 +434,6 @@ function Hand({ side, target, pressedFinger, shake, dip }: {
                     def={def}
                     isTarget={target?.finger === id}
                     pressed={pressedFinger === id}
-                    color={FINGER_COLORS[id]}
                     curl={pose.curl[id] ?? 0}
                   />
                 );
@@ -463,27 +461,35 @@ function SettingRow({ label, desc, on, onToggle }: { label: string; desc: string
 function KeyLabels({ k }: { k: VirtualKey }) {
   if (k.id === 'space') return null;
   const y = k.y * ROW_H;
+  const cy = y + ROW_H / 2;
+  // Stacked two-row legends, centered like the reference: shift glyph on top,
+  // base glyph below. Letter keys show a single uppercase glyph, centered.
   if (k.shiftLabel) {
     return (
       <>
-        <text className="vk-key-sub" x={k.x + k.w - 0.12} y={y + 0.2} fontSize={0.17} textAnchor="end">{k.shiftLabel}</text>
-        <text className="vk-key-label" x={k.x + 0.12} y={y + 0.41} fontSize={0.21}>{k.label}</text>
+        <text className="vk-key-sub" x={k.x + k.w / 2} y={cy - 0.08} fontSize={0.16} textAnchor="middle">{k.shiftLabel}</text>
+        <text className="vk-key-label" x={k.x + k.w / 2} y={cy + 0.19} fontSize={0.18} textAnchor="middle">{k.label}</text>
       </>
     );
   }
   if (k.mod) {
-    return <text className="vk-key-label" x={k.x + 0.12} y={y + 0.32} fontSize={0.19}>{k.label}</text>;
+    return <text className="vk-key-label" x={k.x + 0.12} y={cy + 0.06} fontSize={0.15} textAnchor="start">{k.label}</text>;
   }
-  return <text className="vk-key-label" x={k.x + k.w / 2} y={y + 0.34} fontSize={0.3} textAnchor="middle">{k.label}</text>;
+  return <text className="vk-key-label" x={k.x + k.w / 2} y={cy + 0.12} fontSize={0.28} textAnchor="middle">{k.label.toUpperCase()}</text>;
 }
+
+/**
+ * Column width the keyboard caps itself to — the card rail (max-w-4xl, 896px)
+ * minus the 64px of side padding the card picks up from the main column and
+ * workspace, so its edges line up with the typing card on every screen.
+ */
+const COLUMN_MAX = 832;
 
 export function VirtualKeyboard({ nextChar, press, settings, onUpdateSettings }: VirtualKeyboardProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [flash, setFlash] = useState<KeyboardPress | null>(null);
   const [dip, setDip] = useState<{ side: 'l' | 'r'; seq: number } | null>(null);
   const [shake, setShake] = useState<{ side: 'l' | 'r'; seq: number } | null>(null);
-  const [maxWidth, setMaxWidth] = useState<number | null>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const flashTimer = useRef<number | undefined>(undefined);
@@ -494,32 +500,6 @@ export function VirtualKeyboard({ nextChar, press, settings, onUpdateSettings }:
   const capRefs = useRef(new Map<string, SVGRectElement>());
   const capDips = useRef(new Map<string, { v: number; t: number }>());
   const dipRaf = useRef(0);
-
-  // Fit the keyboard into whatever vertical space is left below the page content,
-  // so it never gets clipped when the page is scrolled to the top.
-  useLayoutEffect(() => {
-    const update = () => {
-      const root = wrapRef.current?.parentElement;
-      const content = root?.previousElementSibling;
-      if (!root || !content) return;
-      const rect = content.getBoundingClientRect();
-      const docBottom = rect.bottom + window.scrollY;
-      const pad = parseFloat(getComputedStyle(root).paddingBottom) || 0;
-      // 28px covers the card's own padding/border plus a little breathing room.
-      const available = window.innerHeight - docBottom - pad - 28;
-      const cap = Math.floor(Math.max(340, available) * (15 / STAGE_U));
-      setMaxWidth(Math.min(1020, cap));
-    };
-    update();
-    const content = wrapRef.current?.parentElement?.previousElementSibling;
-    const observer = new ResizeObserver(update);
-    if (content) observer.observe(content);
-    window.addEventListener('resize', update);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', update);
-    };
-  }, [settings.showKeyboard]);
 
   const lookup = useMemo(() => (nextChar ? findKeyForChar(nextChar) : null), [nextChar]);
   const targetKeyId = lookup?.key.id ?? null;
@@ -622,27 +602,41 @@ export function VirtualKeyboard({ nextChar, press, settings, onUpdateSettings }:
   }
 
   const ky = (row: number) => row * ROW_H;
+  // Cap metrics scale off the row pitch so every size stays proportionate.
+  const capH = ROW_H * 0.82;
+  const capInset = 0.06;
+  const capSideH = capH + 0.07;
   const keyNodes = KEYBOARD.map((k) => {
     const isTarget = k.id === targetKeyId || k.id === shiftKeyId;
     const flashMatch = flash?.id === k.id;
     const wrong = flashMatch && flash?.correct === false;
     return (
-      <g key={k.id} className={cx('vk-key', isTarget && 'vk-target', flashMatch && 'vk-pressed', wrong && 'vk-err')}>
-        {isTarget && <rect className="vk-halo" x={k.x - 0.04} y={ky(k.y) - 0.02} width={k.w + 0.08} height={0.54} rx={0.12} />}
+      <g key={k.id} className={cx('vk-key', k.mod && 'vk-mod', isTarget && 'vk-target', flashMatch && 'vk-pressed', wrong && 'vk-err')}>
+        {isTarget && <rect className="vk-halo" x={k.x - 0.04} y={ky(k.y) - 0.02} width={k.w + 0.08} height={ROW_H + 0.04} rx={0.12} />}
+        {/* Side wall peeks out under the face; the JS spring dips the face on
+            press, which deepens the skirt — real keycap depth. */}
+        <rect
+          className="vk-key-cap-side"
+          x={k.x + capInset}
+          y={ky(k.y) + 0.05}
+          width={k.w - capInset * 2}
+          height={capSideH}
+          rx={0.1}
+        />
         <rect
           ref={(el) => { if (el) capRefs.current.set(k.id, el); }}
-          className="vk-key-cap"
-          x={k.x + 0.06}
-          y={ky(k.y) + 0.04}
-          width={k.w - 0.12}
-          height={0.42}
-          rx={0.08}
+          className="vk-key-cap-face"
+          x={k.x + capInset}
+          y={ky(k.y) + 0.05}
+          width={k.w - capInset * 2}
+          height={capH}
+          rx={0.1}
         />
         <KeyLabels k={k} />
         {settings.showFingerZones ? (
-          <rect x={k.x + 0.09} y={ky(k.y) + 0.38} width={k.w - 0.18} height={0.065} rx={0.03} fill={FINGER_COLORS[k.finger]} opacity={0.65} />
+          <rect x={k.x + 0.09} y={ky(k.y) + capH - 0.09} width={k.w - 0.18} height={0.065} rx={0.03} fill={FINGER_COLORS[k.finger]} opacity={0.65} />
         ) : k.home ? (
-          <rect className="vk-home-bar" x={k.x + k.w / 2 - 0.14} y={ky(k.y) + 0.4} width={0.28} height={0.04} rx={0.02} />
+          <rect className="vk-home-bar" x={k.x + k.w / 2 - 0.14} y={ky(k.y) + capH - 0.08} width={0.28} height={0.04} rx={0.02} />
         ) : null}
       </g>
     );
@@ -658,19 +652,18 @@ export function VirtualKeyboard({ nextChar, press, settings, onUpdateSettings }:
 
   return (
     <div
-      ref={wrapRef}
       className="relative w-full mx-auto animate-goal-pop"
-      style={{ maxWidth: maxWidth ?? 1020, transition: 'max-width 0.25s ease' }}
+      style={{ maxWidth: COLUMN_MAX }}
     >
-      <div className="relative bg-darkcard border border-darkborder rounded-2xl shadow-lg px-2 pt-2 pb-1.5">
+      <div className="relative bg-darkcard border border-darkborder rounded-2xl shadow-lg px-2 pt-9 pb-1.5">
         <button
           ref={btnRef}
           onClick={() => { setShowSettings((value) => !value); if (settings.websiteSfx) soundManager.playUiClick(); }}
-          className="absolute right-2.5 bottom-2.5 z-10 flex items-center gap-1.5 text-[11px] font-semibold text-mutedtext hover:text-accent bg-darkbg/80 border border-darkborder hover:border-accent rounded-lg px-2.5 py-1.5 transition-colors"
+          className="absolute right-3 top-2.5 z-10 flex items-center gap-1.5 text-[11px] font-mono font-semibold tracking-wide text-bodytext hover:text-accent transition-colors"
           aria-expanded={showSettings}
         >
           <SlidersHorizontal className="w-3 h-3" />
-          <span>Keyboard Settings</span>
+          <span className="underline decoration-dotted underline-offset-2">Keyboard Settings</span>
         </button>
         <div className="absolute left-2.5 bottom-2.5 z-10 flex items-center gap-1.5 text-[11px] font-mono font-semibold text-mutedtext bg-darkbg/80 border border-darkborder rounded-md px-2 py-1 pointer-events-none">
           <span className="text-accent">{hint}</span>
@@ -686,18 +679,41 @@ export function VirtualKeyboard({ nextChar, press, settings, onUpdateSettings }:
               <stop offset="55%" stopColor="var(--vk-bone)" stopOpacity="0.88" />
               <stop offset="100%" stopColor="var(--vk-bone)" stopOpacity="0.58" />
             </radialGradient>
-            <filter id="vkTissue" x="-60%" y="-60%" width="220%" height="220%">
-              <feGaussianBlur stdDeviation="0.09" />
+            {/* Keycap material: top-lit face, darker toward the bottom edge */}
+            <linearGradient id="vkCapGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--vk-cap-hi)" />
+              <stop offset="70%" stopColor="var(--vk-cap-lo)" />
+              <stop offset="100%" stopColor="var(--vk-cap-lo)" />
+            </linearGradient>
+            <linearGradient id="vkAccentGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--color-accent-hover)" />
+              <stop offset="100%" stopColor="var(--color-accent)" />
+            </linearGradient>
+            <linearGradient id="vkWrongGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--color-wrong)" />
+              <stop offset="100%" stopColor="var(--color-wrong)" stopOpacity="0.75" />
+            </linearGradient>
+            {/* Flesh: lit from above — sheen at the top, base tone mid, deep
+                occlusion toward the edge. Fingers reuse it per-capsule. */}
+            <linearGradient id="vkSkinGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--vk-skin-hi)" stopOpacity="0.9" />
+              <stop offset="38%" stopColor="var(--vk-skin)" stopOpacity="0.88" />
+              <stop offset="100%" stopColor="var(--vk-skin-edge)" stopOpacity="0.8" />
+            </linearGradient>
+            {/* Modifier key material: lighter gray than the letter caps */}
+            <linearGradient id="vkModGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--vk-mod-hi)" />
+              <stop offset="100%" stopColor="var(--vk-mod-lo)" />
+            </linearGradient>
+            <filter id="vkHandShadow" x="-30%" y="-30%" width="160%" height="170%">
+              <feDropShadow dx="0" dy="0.06" stdDeviation="0.09" floodColor="#000" floodOpacity="0.3" />
             </filter>
-            <pattern id="vkSpeckle" width="0.08" height="0.08" patternUnits="userSpaceOnUse">
-              <circle className="vk-speck" cx={0.014} cy={0.018} r={0.009} />
-              <circle className="vk-speck" cx={0.052} cy={0.01} r={0.006} />
-              <circle className="vk-speck" cx={0.064} cy={0.056} r={0.0095} />
-              <circle className="vk-speck" cx={0.007} cy={0.05} r={0.005} />
-              <circle className="vk-speck-hi" cx={0.03} cy={0.062} r={0.005} />
-              <circle className="vk-speck-hi" cx={0.073} cy={0.034} r={0.0045} />
-            </pattern>
+            <filter id="vkSheen" x="-60%" y="-60%" width="220%" height="220%">
+              <feGaussianBlur stdDeviation="0.06" />
+            </filter>
           </defs>
+          {/* Deck tray the caps sit on, spanning the full board width */}
+          <rect className="vk-deck" x={0.1} y={-0.06} width={14.8} height={3.75} rx={0.14} />
           <g>{keyNodes}</g>
           {settings.showHands && (
             <g className="vk-hands">

@@ -241,13 +241,59 @@ html, body {
 
 /* ---------- Virtual Keyboard ---------- */
 
-.vk-key-cap {
-  fill: var(--color-card-secondary);
-  stroke: var(--color-border);
-  stroke-width: 0.035;
-  /* Transform is driven per-frame by the finger-curl spring in JS — a CSS
-     transform transition here would lag a frame behind and cause jitter. */
+/* Material tokens. Everything derives from the active theme, so the board
+   re-skins itself on every theme change — no hard-coded colors in components.
+   Fallbacks first, richer color-mix blends where supported. */
+.vk-svg {
+  --vk-cap-hi: var(--color-card-secondary);
+  --vk-cap-lo: var(--color-border);
+  --vk-cap-rim: var(--color-border);
+  --vk-cap-side: var(--color-border);
+  --vk-mod-hi: var(--color-card);
+  --vk-mod-lo: var(--color-border);
+  --vk-legend: var(--color-text-muted);
+  --vk-legend-dim: var(--color-text-dim);
+  --vk-on-accent: var(--color-bg);
+  --vk-skin: var(--color-text-muted);
+  --vk-skin-hi: var(--color-text);
+  --vk-skin-edge: var(--color-text-dim);
+  --vk-bone: var(--color-text);
+  --vk-bone-edge: var(--color-text-dim);
+}
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+  .vk-svg {
+    /* Near-black letter caps, lighter gray modifier caps — the reference pair. */
+    --vk-cap-hi: color-mix(in srgb, var(--color-card-secondary) 40%, black 60%);
+    --vk-cap-lo: color-mix(in srgb, var(--color-card-secondary) 22%, black 78%);
+    --vk-cap-rim: color-mix(in srgb, black 74%, var(--color-border) 26%);
+    --vk-cap-side: color-mix(in srgb, black 82%, var(--color-border) 18%);
+    --vk-mod-hi: color-mix(in srgb, var(--color-border) 62%, black 38%);
+    --vk-mod-lo: color-mix(in srgb, var(--color-border) 40%, black 60%);
+    --vk-legend: color-mix(in srgb, var(--color-text) 90%, white 10%);
+    --vk-legend-dim: color-mix(in srgb, var(--color-text-muted) 78%, white 22%);
+    --vk-on-accent: color-mix(in srgb, black 84%, var(--color-accent) 16%);
+    /* Dusty-rose flesh, lit from above with a soft sheen and deep occlusion
+       edge; translucent enough for keys to read through, like the reference. */
+    --vk-skin: color-mix(in srgb, #8e6b64 72%, var(--color-text) 8%);
+    --vk-skin-hi: color-mix(in srgb, #b9988b 62%, var(--color-text) 10%);
+    --vk-skin-edge: color-mix(in srgb, #3f2d29 68%, var(--color-text) 6%);
+    --vk-bone: color-mix(in srgb, #f3ede0 80%, var(--color-text) 20%);
+    --vk-bone-edge: color-mix(in srgb, #7a6a52 32%, var(--vk-bone) 68%);
+  }
+}
+
+/* Key material: a gradient face lit from above plus a darker skirt (side
+   wall) peeking out at the bottom — real depth instead of a flat rectangle. */
+.vk-key-cap-face {
+  fill: url(#vkCapGrad);
+  stroke: var(--vk-cap-rim);
+  stroke-width: 0.02;
   transition: fill 0.15s ease, stroke 0.15s ease;
+}
+.vk-key-cap-side {
+  fill: var(--vk-cap-side);
+  opacity: 0.9;
+  transition: fill 0.15s ease;
 }
 .vk-key-label,
 .vk-key-sub {
@@ -255,84 +301,136 @@ html, body {
   pointer-events: none;
   transition: fill 0.15s ease;
 }
-.vk-key-label { fill: var(--color-text-muted); }
-.vk-key-sub { fill: var(--color-text-dim); }
+.vk-key-label { fill: var(--vk-legend); }
+.vk-key-sub { fill: var(--vk-legend-dim); }
 .vk-home-bar { fill: var(--color-text-dim); opacity: 0.45; }
 .vk-halo { fill: var(--color-accent); opacity: 0.1; animation: vkPulse 1.6s ease-in-out infinite; }
 
-.vk-target .vk-key-cap { stroke: var(--color-accent); fill: var(--color-accent-muted); }
-.vk-target .vk-key-label,
-.vk-target .vk-key-sub { fill: var(--color-accent); }
-.vk-pressed .vk-key-cap {
-  transform: translateY(0.09px);
-  fill: var(--color-accent);
-  fill-opacity: 0.45;
-  stroke: var(--color-accent);
+/* The deck the caps sit on: a subtly raised tray below the keyboard card. */
+.vk-deck {
+  fill: var(--color-card);
+  stroke: var(--color-border);
+  stroke-width: 0.03;
 }
-.vk-err .vk-key-cap { fill: var(--color-wrong); fill-opacity: 0.55; stroke: var(--color-wrong); }
-.vk-err .vk-key-label { fill: var(--color-wrong); }
+
+/* Modifier keys: lighter gray material, dimmer legends — the reference pair. */
+.vk-mod .vk-key-cap-face { fill: url(#vkModGrad); stroke: var(--vk-cap-rim); }
+.vk-mod .vk-key-cap-side { fill: color-mix(in srgb, var(--vk-cap-side) 70%, white 30%); opacity: 0.9; }
+.vk-mod .vk-key-label { fill: var(--vk-legend-dim); }
+
+/* Target key: solid accent material with its own top-lit gradient. */
+.vk-target .vk-key-cap-face { fill: url(#vkAccentGrad); stroke: var(--color-accent-hover); }
+.vk-target .vk-key-cap-side { fill: var(--color-accent); opacity: 0.7; }
+.vk-target .vk-key-label,
+.vk-target .vk-key-sub { fill: var(--vk-on-accent); }
+/* Physical press: accent material too (the JS spring drives the dip). */
+.vk-pressed .vk-key-cap-face { fill: url(#vkAccentGrad); }
+.vk-pressed .vk-key-cap-side { fill: var(--color-accent); opacity: 0.8; }
+.vk-pressed .vk-key-label,
+.vk-pressed .vk-key-sub { fill: var(--vk-on-accent); }
+.vk-err .vk-key-cap-face { fill: url(#vkWrongGrad); stroke: var(--color-wrong); }
+.vk-err .vk-key-cap-side { fill: var(--color-wrong); opacity: 0.7; }
+.vk-err .vk-key-label,
+.vk-err .vk-key-sub { fill: var(--vk-on-accent); }
 
 /* Hand motion is owned entirely by the JS spring — NO CSS transform
    transitions here: they re-target on every spring frame and cause a
    pre-press shiver. */
 
-/* Radiograph hands: bright ivory bones inside a visible flesh halo — the
-   soft-tissue silhouette is clearly darker/brighter than the film around it,
-   exactly like the reference plate. No layer-wide glow: the only light
-   source is the accent glow on the finger guiding you to the next key. */
+/* Realistic 3D hands: dusty-rose flesh lit from above — sheen top-light,
+   body gradient, contact shadow under the forearm, deep occlusion rim.
+   Translucent over the keys exactly like the reference plate. */
 .vk-hands { filter: none; }
-.vk-svg { --vk-bone: var(--color-text); --vk-skin: var(--color-text); }
-@supports (color: color-mix(in srgb, red 50%, blue)) {
-  .vk-svg {
-    --vk-bone: color-mix(in srgb, var(--color-text) 68%, #f4ead0);
-  }
+
+/* Under-silhouette: soft dark grounding below the whole hand. */
+.vk-skin-under { fill: var(--vk-skin-edge); opacity: 0.45; }
+/* Main flesh: vertical gradient from lit sheen to base tone. */
+.vk-skin-fill {
+  fill: url(#vkSkinGrad);
+  fill-opacity: 0.93;
+  filter: url(#vkHandShadow);
+}
+/* Top sheen: blurred light patch where the knuckles catch the light. */
+.vk-skin-sheen {
+  fill: var(--vk-skin-hi);
+  opacity: 0.26;
+}
+/* Silhouette edge: deep occlusion line that sells the volume. */
+.vk-skin-rim {
+  fill: none;
+  stroke: var(--vk-skin-edge);
+  stroke-opacity: 0.5;
+  stroke-width: 0.045;
+}
+/* Per-segment flesh: each capsule carries its own shading stack — dark rim
+   stroke under the body (occlusion), gradient body, blurred sheen band. */
+.vk-capsule-rim {
+  fill: none;
+  stroke: var(--vk-skin-edge);
+  stroke-opacity: 0.5;
+}
+.vk-capsule {
+  fill: url(#vkSkinGrad);
+  fill-opacity: 0.94;
+}
+.vk-capsule-down { fill-opacity: 1; }
+.vk-capsule-sheen { fill: var(--vk-skin-hi); opacity: 0.55; }
+.vk-nail {
+  fill: var(--vk-skin-hi);
+  opacity: 0.4;
+}
+.vk-wrist-crease {
+  fill: none;
+  stroke: var(--vk-skin-edge);
+  stroke-opacity: 0.4;
+  stroke-width: 0.035;
 }
 
-/* Soft tissue: the ghostly flesh edge that surrounds the bones on a film */
-.vk-tissue {
-  fill: var(--vk-skin);
-  fill-opacity: 0.13;
-  stroke: var(--vk-skin);
-  stroke-opacity: 0.24;
-  stroke-width: 0.06;
-}
 
-/* The bones: solid, bright, slightly warm — exactly like a radiograph */
+/* The skeleton: faint ivory bones with a warm edge, tinted per finger in
+   zones mode. Secondary under the flesh — visible, not dominant. */
 .vk-bone { will-change: transform; }
 .vk-bone-shape {
   fill: var(--vk-bone);
-  fill-opacity: 0.78;
-  stroke: var(--vk-bone);
-  stroke-opacity: 0.95;
-  stroke-width: 0.014;
+  fill-opacity: 0.34;
+  stroke: var(--vk-bone-edge);
+  stroke-opacity: 0.4;
+  stroke-width: 0.016;
 }
 .vk-condyle {
   fill: url(#vkBulb);
-  stroke: var(--vk-bone);
-  stroke-opacity: 0.8;
+  stroke: var(--vk-bone-edge);
+  stroke-opacity: 0.3;
   stroke-width: 0.012;
-}
-
-/* Film grain: mottled density variation inside the bone shafts. A second
-   copy of the bone path filled with a speckle pattern — dark pits plus a
-   few bright flecks — very low opacity so it reads as texture, not noise.
-   Brighter on dark themes where the plate look needs more contrast. */
-.vk-bone-grain {
-  fill: url(#vkSpeckle);
-  stroke: none;
-  opacity: 0.16;
-}
-.vk-speck { fill: var(--color-bg); opacity: 0.5; }
-.vk-speck-hi { fill: var(--vk-bone); opacity: 0.55; }
-[data-theme="default-dark"], [data-theme="dracula"],
-[data-theme="nordic"], [data-theme="ember"] {
-  .vk-bone-grain { opacity: 0.22; }
 }
 .vk-carpal {
   fill: url(#vkBulb);
-  stroke: var(--vk-bone);
-  stroke-opacity: 0.75;
+  stroke: var(--vk-bone-edge);
+  stroke-opacity: 0.28;
   stroke-width: 0.012;
+}
+
+/* Light themes: sunlit skin, ivory bones with a deeper edge for contrast,
+   pale modifier caps and dark legends — the classic light board look. */
+[data-theme="default-light"], [data-theme="classic"],
+[data-theme="serene"], [data-theme="parchment"] {
+  .vk-svg {
+    --vk-cap-hi: color-mix(in srgb, var(--color-card-secondary) 45%, white 55%);
+    --vk-cap-lo: var(--color-card-secondary);
+    --vk-cap-rim: var(--color-border);
+    --vk-cap-side: color-mix(in srgb, var(--color-border) 80%, black 20%);
+    --vk-mod-hi: color-mix(in srgb, var(--color-card) 60%, var(--color-border) 40%);
+    --vk-mod-lo: var(--color-border);
+    --vk-legend: color-mix(in srgb, var(--color-text) 92%, black 8%);
+    --vk-legend-dim: var(--color-text-muted);
+    --vk-skin: #d8a889;
+    --vk-skin-hi: #ecc7a8;
+    --vk-skin-edge: #8a5f47;
+    --vk-bone: #FAF5E9;
+    --vk-bone-edge: #8A7355;
+  }
+  .vk-bone-shape { stroke-opacity: 0.6; }
+  .vk-skin-under { opacity: 0.3; }
 }
 
 /* Optional per-finger color zones */
@@ -342,18 +440,28 @@ html, body {
   fill: var(--finger-color, var(--vk-bone));
   stroke: var(--finger-color, var(--vk-bone));
 }
-.vk-zones .vk-bone-shape { fill-opacity: 0.3; }
+.vk-zones .vk-bone-shape { fill-opacity: 0.42; }
 
-/* The finger guiding you to the next key is tinted in the accent color.
-   No drop-shadow: the hands are fully glow-free — color alone marks it. */
-.vk-finger-target .vk-bone-shape,
-.vk-finger-target .vk-condyle { fill: var(--color-accent); stroke: var(--color-accent); }
-.vk-finger-target .vk-bone-shape { fill-opacity: 0.34; stroke-opacity: 0.8; }
-.vk-finger-target .vk-condyle { fill-opacity: 0.45; stroke-opacity: 0.9; }
+/* The finger guiding you to the next key floods with the accent color —
+   skin, sheen and edge together, matching the highlighted key. */
+.vk-finger-target .vk-capsule { fill: var(--color-accent); fill-opacity: 0.92; }
+.vk-finger-target .vk-capsule-sheen { fill: var(--color-accent-hover); opacity: 0.6; }
+.vk-finger-target .vk-capsule-rim { stroke: var(--color-accent); stroke-opacity: 0.9; }
+.vk-finger-target .vk-bone-shape {
+  fill: var(--color-accent);
+  fill-opacity: 0.55;
+  stroke: var(--color-accent);
+  stroke-opacity: 0.95;
+}
+.vk-finger-target .vk-condyle {
+  fill: var(--color-accent);
+  fill-opacity: 0.65;
+  stroke: var(--color-accent);
+}
 
 /* Finger "click" while a key is physically pressed */
-.vk-finger-pressed .vk-bone-shape { fill-opacity: 0.55; }
-.vk-finger-pressed .vk-condyle { fill-opacity: 0.6; }
+.vk-finger-pressed .vk-bone-shape { fill-opacity: 1; }
+.vk-finger-pressed .vk-condyle { fill-opacity: 0.85; }
 
 /* Whole-hand dip on every keystroke, like weight going into the key */
 .vk-dip-a { animation: vkDipA 0.14s ease-out; }
