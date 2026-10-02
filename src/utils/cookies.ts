@@ -11,13 +11,12 @@ const options = { expires: 365, sameSite: 'lax' as const, path: '/', secure: loc
 export const DEFAULT_SETTINGS: UserSettings = {
   theme: 'default-dark', keyboardSound: 'standard', keyboardVolume: 0.7, websiteSfx: true, backspaceEnabled: true,
   fontSize: 'md', duration: 60,
-  showTimer: true, showCaret: true,
+  showTimer: true, showCaret: true, showKeyboard: true, showHands: true, colorZones: false,
   // The live chart stays hidden on a fresh profile so the first screen is just
-  // words, hands and keyboard — users can re-enable it via the Chart toggle.
+  // the words — users can re-enable it via the Chart toggle.
   showChart: false,
   punctuation: false, numbers: false,
   difficulty: 'easy', language: 'english', smoothScroll: true,
-  showKeyboard: true, showHands: true, showFingerZones: false,
 };
 
 export const DEFAULT_PROFILE: UserProfile = {
@@ -100,7 +99,7 @@ export function getSettingsCookie(): UserSettings {
     if (typeof value[key] === 'boolean') settings[key] = value[key];
   }
   if (typeof value.keyboardVolume === 'number' && Number.isFinite(value.keyboardVolume) && value.keyboardVolume >= 0 && value.keyboardVolume <= 1) settings.keyboardVolume = value.keyboardVolume;
-  for (const key of ['showTimer', 'showChart', 'showCaret', 'smoothScroll', 'showKeyboard', 'showHands', 'showFingerZones', 'punctuation', 'numbers'] as const) {
+  for (const key of ['showTimer', 'showChart', 'showCaret', 'smoothScroll', 'punctuation', 'numbers', 'showKeyboard', 'showHands', 'colorZones'] as const) {
     if (typeof value[key] === 'boolean') settings[key] = value[key];
   }
   if (typeof value.duration === 'number' && Number.isInteger(value.duration) && value.duration >= 15 && value.duration <= 1800) settings.duration = value.duration;

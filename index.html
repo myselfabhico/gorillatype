@@ -1,11 +1,73 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta name="google-site-verification" content="bQ8WRI72AAttWinfjshB1etbEVFuYRQGrwKkJa-F2EE" />
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23222222'/><rect x='10' y='10' width='80' height='80' rx='16' fill='%2380C050'/><text x='50' y='64' font-family='monospace' font-weight='900' font-size='44' fill='%23222222' text-anchor='middle'>IO</text></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GorillaType - Typing Test, Competition & Practice</title>
+
+    <!-- Every theme this app paints comes from `data-theme` (see src/index.css),
+           so the page is never a light page that a browser should "helpfully"
+           darken. `only light` is the documented opt-out of Chrome's Auto Dark
+           Theme: without it the algorithm repaints the mascot (a dark logo on
+           the accent tile reads as near-white once darkened) and drags the light
+           themes down with an OS dark mode. Each theme then declares its own
+           `color-scheme`, so scrollbars and UA widgets still follow the theme
+           that is actually on screen rather than this default. -->
+    <meta name="color-scheme" content="only light" />
+    <!-- Dark Reader and friends (the "force dark mode" extensions) do not read
+           `color-scheme`; this is their own documented opt-out, and the near-white
+           mascot in a dark-mode browser is exactly what they do to a dark logo on
+           a coloured tile. The app supplies its own light and dark themes, so
+           letting an extension repaint them only ever makes them wrong. Samsung
+           Internet's and Windows' forced dark modes key off `color-scheme` above. -->
+    <meta name="darkreader-lock" />
+    <meta name="theme-color" content="#222222" />
+    <meta name="google-site-verification" content="bQ8WRI72AAttWinfjshB1etbEVFuYRQGrwKkJa-F2EE" />
+
+    <title>GorillaType - Typing Test, Competition &amp; Practice</title>
+    <meta
+      name="description"
+      content="A free typing speed test that runs in your browser: timed WPM tests, paragraph and code practice, custom drills and live races against AI or friends. No account needed."
+    />
+    <link rel="canonical" href="https://gorillatyper.vercel.app/" />
+
+    <!-- Icons. `favicon.svg` is the scalable one — the gorilla's head on the
+           accent tile, which is what reads at 16px where the whole mascot is a
+           smudge — and the PNGs plus the ICO cover the sizes browsers actually
+           request, including pinned tabs and legacy /favicon.ico lookups. The
+           apple-touch and manifest icons carry the whole mascot for home-screen
+           pins, where there is room for it. -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+    <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Share cards. The image URL is absolute because crawlers do not resolve
+           it against the page. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="GorillaType" />
+    <meta property="og:title" content="GorillaType - Typing Test, Competition &amp; Practice" />
+    <meta
+      property="og:description"
+      content="A free typing speed test that runs in your browser: timed WPM tests, paragraph and code practice, custom drills and live races against AI or friends. No account needed."
+    />
+    <meta property="og:url" content="https://gorillatyper.vercel.app/" />
+    <meta property="og:image" content="https://gorillatyper.vercel.app/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The GorillaType mascot, a gorilla typing at a keyboard" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="GorillaType - Typing Test, Competition &amp; Practice" />
+    <meta
+      name="twitter:description"
+      content="A free typing speed test that runs in your browser: timed WPM tests, paragraph and code practice, custom drills and live races against AI or friends."
+    />
+    <meta name="twitter:image" content="https://gorillatyper.vercel.app/og-image.png" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">

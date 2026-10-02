@@ -98,6 +98,12 @@ export interface UserSettings {
   showTimer: boolean;
   showChart: boolean;
   showCaret: boolean;
+  /** Whether the illustrated keyboard below the test is shown. */
+  showKeyboard: boolean;
+  /** Whether the illustrated typing hands rest on the keyboard. */
+  showHands: boolean;
+  /** Tints every key and fingertip with its touch-typing finger zone colour. */
+  colorZones: boolean;
   /** Monkeytype-style decoration of generated words (capitals, commas, quotes…). */
   punctuation: boolean;
   /** Monkeytype-style chance for some words to be replaced by a 4-digit number. */
@@ -105,9 +111,6 @@ export interface UserSettings {
   difficulty: DifficultyMode;
   language: LanguageId;
   smoothScroll: boolean;
-  showKeyboard: boolean;
-  showHands: boolean;
-  showFingerZones: boolean;
 }
 
 export interface KeystrokePoint {

@@ -1,5 +1,5 @@
 import type { ChangeEvent, FC, CSSProperties } from 'react';
-import { Volume2, VolumeX, Eye, EyeOff, BarChart2, Edit3, SlidersHorizontal, MousePointer, KeyboardMusic, Delete } from 'lucide-react';
+import { Volume2, VolumeX, Eye, EyeOff, BarChart2, Edit3, SlidersHorizontal, MousePointer, KeyboardMusic, Delete, Keyboard, Hand, Palette } from 'lucide-react';
 import type { UserSettings, KeyboardSoundId, FontSize } from '../types';
 import { KEYBOARD_SOUND_OPTIONS, soundManager } from '../utils/sound';
 
@@ -86,6 +86,9 @@ export const SettingsBar: FC<SettingsBarProps> = ({ isOpen, settings, onUpdateSe
             <button onClick={() => onUpdateSettings({ showChart: !settings.showChart })} aria-pressed={settings.showChart} className={toggleClass(settings.showChart)} title="Toggle Performance Chart"><BarChart2 className="w-4 h-4" />Chart</button>
             <button onClick={() => onUpdateSettings({ showTimer: !settings.showTimer })} aria-pressed={settings.showTimer} className={toggleClass(settings.showTimer)} title="Toggle Countdown Timer Visibility">{settings.showTimer ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}Timer</button>
             <button onClick={() => onUpdateSettings({ showCaret: !settings.showCaret })} aria-pressed={settings.showCaret} className={toggleClass(settings.showCaret)} title="Toggle Caret"><MousePointer className="w-4 h-4" />Caret</button>
+            <button onClick={() => onUpdateSettings({ showKeyboard: !settings.showKeyboard })} aria-pressed={settings.showKeyboard} className={toggleClass(settings.showKeyboard)} title="Toggle the virtual keyboard below the test"><Keyboard className="w-4 h-4" />Keyboard</button>
+            <button onClick={() => onUpdateSettings({ colorZones: !settings.colorZones })} aria-pressed={settings.colorZones} className={toggleClass(settings.colorZones)} title="Tint every key and finger with its touch-typing zone color"><Palette className="w-4 h-4" />Zones</button>
+            <button onClick={() => { onUpdateSettings({ showHands: !settings.showHands, showKeyboard: settings.showHands ? settings.showKeyboard : true }); }} aria-pressed={settings.showHands} className={toggleClass(settings.showHands)} title="Toggle the illustrated typing hands (turning them on also shows the keyboard)"><Hand className="w-4 h-4" />Hands</button>
             {onToggleCustom && <button onClick={onToggleCustom} aria-pressed={customActive} className={toggleClass(customActive)} title={customActive ? 'Custom Mode is active — click to revert to the normal typing test' : 'Switch to Custom Mode: type your own text'}><Edit3 className="w-4 h-4" />Custom</button>}
           </div>
         </div>

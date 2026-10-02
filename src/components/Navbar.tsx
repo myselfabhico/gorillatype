@@ -20,7 +20,9 @@ export const Navbar: FC<NavbarProps> = ({ onOpenModes, onOpenTheme, onOpenLangua
     <header className="w-full bg-darkcard border-b border-darkborder select-none sticky top-0 z-30 shadow-md animate-slide-down">
       <div className="max-w-6xl mx-auto px-4 min-h-16 py-3 flex flex-wrap gap-3 items-center justify-between">
         <button onClick={onOpenModes} className="flex items-center gap-3 group text-left !overflow-visible" title="GorillaType - Switch modes">
-          <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center font-mono font-black text-black text-lg shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 group-active:scale-95">IO</div>
+          <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 group-active:scale-95">
+            <img src="/gorilla-logo.png" alt="" aria-hidden="true" draggable={false} className="brand-mark w-full h-full object-contain" />
+          </div>
           <div>
             <span className="font-extrabold tracking-wider text-xl text-bodytext group-hover:text-accent transition-colors">GORILLATYPE</span>
             <span className="block text-[11px] text-mutedtext font-medium">Typing Speed Test & Local Practice</span>

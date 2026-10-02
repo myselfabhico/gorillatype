@@ -25,7 +25,7 @@ export const ModesDrawer: FC<ModesDrawerProps> = ({ isOpen, onClose, currentMode
         <div className="w-screen max-w-sm bg-darkcard border-l border-darkborder p-6 shadow-2xl flex flex-col justify-between gap-6 animate-slide-left text-bodytext overflow-y-auto">
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-darkborder">
-              <div className="flex items-center gap-2"><div className="w-7 h-7 rounded-lg bg-accent text-black font-mono font-bold text-xs flex items-center justify-center">IO</div><h3 className="text-lg font-bold tracking-tight">Typing Modes</h3></div>
+              <div className="flex items-center gap-2"><div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center shrink-0"><img src="/gorilla-logo.png" alt="" aria-hidden="true" draggable={false} className="brand-mark w-full h-full object-contain" /></div><h3 className="text-lg font-bold tracking-tight">Typing Modes</h3></div>
               <button onClick={onClose} aria-label="Close modes" className="p-1.5 rounded-lg bg-darkbg hover:bg-darkborder text-mutedtext hover:text-bodytext transition-all active:scale-90 group"><X className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" /></button>
             </div>
             <div className="mt-5 flex flex-col gap-2.5">

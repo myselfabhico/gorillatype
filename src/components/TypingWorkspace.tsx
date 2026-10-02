@@ -1,5 +1,4 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import type { ChangeEvent, CompositionEvent } from 'react';
 import { RefreshCw, Settings, ChevronDown, Clock, AlertTriangle, MousePointerClick, AtSign, Hash } from 'lucide-react';
 import type { UserSettings, TestRecord, KeystrokePoint } from '../types';
@@ -7,10 +6,11 @@ import { generateWords } from '../utils/wordModifiers';
 import { calculateWpm, calculateRawWpm, calculateAccuracy } from '../utils/stats';
 import { recordWrongKey, recordMissedKey } from '../utils/keyInsights';
 import type { KeyMistakeStore } from '../utils/keyInsights';
-import { findKeyForChar } from '../utils/keyboardLayout';
 import { soundManager } from '../utils/sound';
+import { findKeyForChar } from '../utils/keyboardLayout';
 import { VirtualKeyboard } from './VirtualKeyboard';
 import type { KeyboardPress } from './VirtualKeyboard';
+import { KeyboardSettings } from './KeyboardSettings';
 
 interface TypingWorkspaceProps {
   settings: UserSettings;
@@ -40,30 +40,30 @@ function createSession(settings: UserSettings, customText?: string) {
     input: '',
     startedAt: null as number | null,
     lastActivity: 0,
-     finished: false,
-     correctAttempts: 0,
-     wrongAttempts: 0,
-     correctCharacters: 0,
-     totalCharacters: 0,
-     correctWords: 0,
-     wrongWords: 0,
-     /** Words that contained mistakes but were fully fixed before submission. */
-     correctedWords: 0,
-     correctedKeys: 0,
-     /** Wrong/extra keypresses made in the current word (backspace-reversible). */
-     wordMistakeCount: 0,
-     /** Outcome of every keystroke in the current word, so backspace can undo them. */
-     wordKeyLog: [] as Array<'correct' | 'wrong' | 'extra'>,
-     elapsed: 0,
-     idleWarning: false,
-     history: [] as KeystrokePoint[],
-     charStats: { correct: 0, incorrect: 0, extra: 0, missed: 0 },
-     lastErrorTotal: 0,
-     burstTotal: 0,
-     lastSampleAt: 0,
-     keyMistakes: { wrong: {}, missed: {} } as KeyMistakeStore,
-   };
- }
+    finished: false,
+    correctAttempts: 0,
+    wrongAttempts: 0,
+    correctCharacters: 0,
+    totalCharacters: 0,
+    correctWords: 0,
+    wrongWords: 0,
+    /** Words that contained mistakes but were fully fixed before submission. */
+    correctedWords: 0,
+    correctedKeys: 0,
+    /** Wrong/extra keypresses made in the current word (backspace-reversible). */
+    wordMistakeCount: 0,
+    /** Outcome of every keystroke in the current word, so backspace can undo them. */
+    wordKeyLog: [] as Array<'correct' | 'wrong' | 'extra'>,
+    elapsed: 0,
+    idleWarning: false,
+    history: [] as KeystrokePoint[],
+    charStats: { correct: 0, incorrect: 0, extra: 0, missed: 0 },
+    lastErrorTotal: 0,
+    burstTotal: 0,
+    lastSampleAt: 0,
+    keyMistakes: { wrong: {}, missed: {} } as KeyMistakeStore,
+  };
+}
 
 type Session = ReturnType<typeof createSession>;
 
@@ -97,29 +97,23 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
   const [isFocused, setIsFocused] = useState(false);
   const [draft, setDraft] = useState('');
   const [caret, setCaret] = useState(0);
+  // Drives the virtual keyboard: which key the test is asking for, and the last
+  // physical key that was struck (for the cap dip / error tint).
+  const [press, setPress] = useState<KeyboardPress | null>(null);
+  const pressSeq = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const wordsContainerRef = useRef<HTMLDivElement>(null);
   const caretRef = useRef<HTMLSpanElement>(null);
   const composingRef = useRef(false);
   const selectionRef = useRef<{ start: number; end: number } | null>(null);
-  const [nextChar, setNextChar] = useState<string | null>(null);
-  const [press, setPress] = useState<KeyboardPress | null>(null);
   // Brief ok/bad flash on the word that was just submitted.
   const [flash, setFlash] = useState<{ index: number; ok: boolean } | null>(null);
-  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
-  const pressSeq = useRef(0);
   const latestRef = useRef({ settings, blocked, onFinishTest, onRestart, mode, onTestActiveChange });
 
   useLayoutEffect(() => {
     latestRef.current = { settings, blocked, onFinishTest, onRestart, mode, onTestActiveChange };
   }, [settings, blocked, onFinishTest, onRestart, mode, onTestActiveChange]);
-
-  useEffect(() => {
-    setPortalRoot(document.getElementById('virtual-keyboard-root'));
-    const first = sessionRef.current.words[0]?.word;
-    setNextChar(first ? Array.from(first)[0] ?? null : null);
-  }, []);
 
   useEffect(() => {
     // A fresh session (mount, reset button, idle reset, difficulty change) means no test is running.
@@ -132,6 +126,13 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
     return () => window.clearTimeout(timer);
   }, [flash]);
 
+  // The keyboard only needs the keystroke long enough to play its cap dip.
+  useEffect(() => {
+    if (!press) return;
+    const timer = window.setTimeout(() => setPress(null), 150);
+    return () => window.clearTimeout(timer);
+  }, [press]);
+
   const publish = useCallback(() => {
     const session = sessionRef.current;
     setView({ ...session, words: [...session.words], history: [...session.history] });
@@ -143,7 +144,6 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
     session.finished = true;
     latestRef.current.onTestActiveChange?.(false);
     session.elapsed = Math.max(0.001, elapsed);
-    setNextChar(null);
     session.idleWarning = false;
     const { settings: currentSettings, onFinishTest: complete, mode: currentMode } = latestRef.current;
     const metrics = getMetrics(session, session.elapsed);
@@ -348,12 +348,17 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
     if (target === undefined) return;
     const targetChars = Array.from(target);
     let position = Array.from(value.slice(0, start)).length;
-    let lastChar = '';
+    let lastKeyId: string | null = null;
     let lastCorrect = false;
     for (const char of Array.from(inserted)) {
       const isExtra = position > targetChars.length;
       const expected = position === targetChars.length ? ' ' : targetChars[position] ?? '';
       const correct = !isExtra && char === expected;
+      const pressedKey = findKeyForChar(char);
+      if (pressedKey) {
+        lastKeyId = pressedKey.key.id;
+        lastCorrect = correct;
+      }
       if (isExtra) {
         session.charStats.extra++;
         session.wordMistakeCount++;
@@ -374,8 +379,6 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
         else if (expected === ' ') recordWrongKey(session.keyMistakes, ' ', char);
       }
       session.burstTotal++;
-      lastChar = char;
-      lastCorrect = correct;
       position++;
     }
     // A deletion erases the newest characters of the current word — undo their
@@ -393,10 +396,7 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
         session.charStats.extra--;
       }
     }
-    if (lastChar) {
-      const stroke = findKeyForChar(lastChar);
-      if (stroke) setPress({ id: stroke.key.id, correct: lastCorrect, seq: ++pressSeq.current });
-    }
+    if (lastKeyId) setPress({ id: lastKeyId, correct: lastCorrect, seq: ++pressSeq.current });
     if (inserted && settings.keyboardSound !== 'mute') {
       void soundManager.playKey();
     }
@@ -447,16 +447,6 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
         session.words.push(...generateWords(settings, 300).map((word) => ({ word })));
       }
     }
-    const upcoming = session.words[session.index]?.word;
-    let next: string | null = null;
-    if (upcoming !== undefined) {
-      next = submitted
-        ? Array.from(upcoming)[0] ?? null
-        : session.input === target
-          ? ' '
-          : Array.from(upcoming)[Array.from(session.input).length] ?? ' ';
-    }
-    setNextChar(next);
     setDraft(session.input);
     setCaret(submitted ? 0 : (selection ?? session.input.length));
     publish();
@@ -487,6 +477,14 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
   const maximum = Math.max(30, ...chartPoints.map((point) => point.rawWpm));
   const chartPath = (field: 'wpm' | 'rawWpm') => chartPoints.map((point, index) => `${index ? 'L' : 'M'} ${10 + point.second / Math.max(1, view.elapsed) * 580} ${110 - point[field] / maximum * 100}`).join(' ');
   const buttonClass = 'p-1.5 bg-darkcard hover:bg-darkbg text-mutedtext hover:text-accent rounded-lg border border-darkborder hover:border-accent transition-all shadow-sm active:scale-95';
+  // What the board should light up: the next character of the current word, or a
+  // space once the word is complete. Null before the test produces anything.
+  const nextChar = view.finished ? null : (() => {
+    const chars = Array.from(view.words[view.index]?.word ?? '');
+    if (chars.length === 0) return null;
+    const typed = Array.from(view.input).length;
+    return typed >= chars.length ? ' ' : chars[typed] ?? ' ';
+  })();
 
   return (
     <div className="w-full max-w-4xl mx-auto px-2 sm:px-4 py-2 select-none" inert={blocked}>
@@ -589,21 +587,34 @@ function TypingSession({ settings, customText, mode = 'typing-test', blocked = f
           <button onClick={onRestart} className={`${buttonClass} px-5 py-3 flex items-center gap-2 text-sm font-bold group`} title="Restart Test"><RefreshCw className="w-4 h-4 transition-transform duration-500 group-hover:rotate-180" /><span className="hidden sm:inline">Reset</span></button>
         </div>
       </div>
-      <div className="mt-5 [@media(max-height:830px)]:mt-3 bg-darkcard border-2 border-darkborder rounded-2xl p-4 sm:p-5 shadow-xl">
-        <div className="flex flex-wrap justify-between gap-3 text-xs text-mutedtext font-mono"><span>WPM <strong key={metrics.wpm} className="text-accent stat-tick">{metrics.wpm}</strong></span><span>Raw <strong key={`raw${metrics.rawWpm}`} className="text-bodytext stat-tick">{metrics.rawWpm}</strong></span><span>Accuracy <strong key={`acc${metrics.accuracy}`} className="text-accent stat-tick">{metrics.accuracy}%</strong></span><span>Errors <strong key={`err${view.wrongAttempts}`} className="text-wrongred stat-tick">{view.wrongAttempts}</strong></span></div>
-        {settings.showChart && (
-          <div className="relative mt-3">
+      {/* The stats strip that used to sit here is gone; the card is now just the
+          optional speed curve, so it only takes up room when that is switched on. */}
+      {settings.showChart && (
+        <div className="mt-5 [@media(max-height:830px)]:mt-3 bg-darkcard border-2 border-darkborder rounded-2xl p-4 sm:p-5 shadow-xl">
+          <div className="relative">
             {view.history.length > 0 ? (
               <svg viewBox="0 0 600 120" role="img" aria-label="Live WPM and raw WPM chart" className="w-full h-32"><path d="M 10 110 H 590" fill="none" stroke="var(--color-border)" /><path d={chartPath('rawWpm')} fill="none" stroke="var(--color-text-muted)" strokeWidth="2" strokeDasharray="4 2" /><path d={chartPath('wpm')} fill="none" stroke="var(--color-accent)" strokeWidth="3" /></svg>
             ) : (
               <div className="h-32 flex items-center justify-center border-b border-darkborder text-xs text-mutedtext/70">your speed curve appears here as you type</div>
             )}
           </div>
-        )}
-      </div>
-      {portalRoot && createPortal(
-        <VirtualKeyboard nextChar={nextChar} press={press} settings={settings} onUpdateSettings={onUpdateSettings} />,
-        portalRoot,
+        </div>
+      )}
+      {/* The board is ~73% of the rail wide in the reference layout, and sits one
+          comfortable gap below the stats card. Its settings chip lives in the row
+          underneath, out of the artwork, so it can never cover a key or a hand. */}
+      {settings.showKeyboard && (
+        <div className="mx-auto mt-9 [@media(max-height:830px)]:mt-5 w-full max-w-[606px]">
+          <div
+            className="relative"
+            onClick={() => { if (!blocked) inputRef.current?.focus({ preventScroll: true }); }}
+          >
+            <VirtualKeyboard nextChar={nextChar} press={press} showHands={settings.showHands} colorZones={settings.colorZones} />
+          </div>
+          <div className="mt-2 flex items-center justify-end">
+            <KeyboardSettings settings={settings} onUpdateSettings={onUpdateSettings} />
+          </div>
+        </div>
       )}
     </div>
   );

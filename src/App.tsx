@@ -51,7 +51,14 @@ export function App() {
   const dailyGoal = useDailyGoal({ testInProgress, soundEnabled: settings.websiteSfx });
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', settings.theme);
+    const root = document.documentElement;
+    root.setAttribute('data-theme', settings.theme);
+    // The browser's own chrome — a mobile address bar, an installed app window —
+    // is tinted from this meta, so keep it on the colour the theme just painted
+    // instead of the dark default index.html ships with.
+    const themed = getComputedStyle(root).getPropertyValue('--color-bg').trim();
+    const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (themeColor && themed) themeColor.content = themed;
   }, [settings.theme]);
 
   // Global click ripple: one delegated listener gives EVERY button in the app
@@ -217,10 +224,7 @@ export function App() {
           )}
         </main>
       </div>
-      {/* Mirrors the card column's side padding (main px-4 + workspace
-          px-2/sm:px-4), so the keyboard's edges line up with the typing
-          card's edges at every width and zoom level. */}
-      <div id="virtual-keyboard-root" className="relative z-10 w-full max-w-4xl mx-auto px-6 sm:px-8 pt-3 pb-5 [@media(max-height:830px)]:pt-2 [@media(max-height:830px)]:pb-3" />        <ModesDrawer isOpen={isModesDrawerOpen} onClose={() => setIsModesDrawerOpen(false)} currentMode={currentMode === 'typing-test' ? testMode : currentMode} onSelectMode={handleSelectMode} />
+      <ModesDrawer isOpen={isModesDrawerOpen} onClose={() => setIsModesDrawerOpen(false)} currentMode={currentMode === 'typing-test' ? testMode : currentMode} onSelectMode={handleSelectMode} />
       <ThemeDrawer isOpen={isThemeDrawerOpen} onClose={() => setIsThemeDrawerOpen(false)} currentTheme={settings.theme} onSelectTheme={handleSelectTheme} />
       <LanguageModal isOpen={isLanguageModalOpen} onClose={() => setIsLanguageModalOpen(false)} currentLanguage={settings.language} onSelectLanguage={handleSelectLanguage} />
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} profile={profile} onUpdateProfile={setProfile} />

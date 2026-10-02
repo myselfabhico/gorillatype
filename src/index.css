@@ -2,7 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Each theme also declares its own `color-scheme`, so the browser chrome that
+   belongs to the page — scrollbars, form controls, the address-bar tint —
+   matches the theme on screen instead of the OS preference. The `only light`
+   on the light themes is deliberate: it is the documented per-element opt-out
+   of Chrome's Auto Dark Theme, so an OS dark mode can no longer drag a light
+   theme down with it. Dark themes say `dark`; a page that declares itself dark
+   is never auto-darkened, and they get dark scrollbars to match. index.html
+   carries the matching `<meta name="color-scheme" content="only light">`,
+   which is what stops the mascot being inverted before this sheet applies. */
 :root, [data-theme="default-dark"] {
+  color-scheme: dark;
   --color-bg: #222222;
   --color-card: #2a2a2a;
   --color-card-secondary: #313131;
@@ -20,6 +30,7 @@
 }
 
 [data-theme="nordic"] {
+  color-scheme: dark;
   --color-bg: #2E3440;
   --color-card: #353B49;
   --color-card-secondary: #3E4557;
@@ -37,6 +48,7 @@
 }
 
 [data-theme="ember"] {
+  color-scheme: dark;
   --color-bg: #262220;
   --color-card: #2F2B27;
   --color-card-secondary: #383331;
@@ -54,6 +66,7 @@
 }
 
 [data-theme="default-light"] {
+  color-scheme: only light;
   --color-bg: #F4F5F7;
   --color-card: #FFFFFF;
   --color-card-secondary: #ECEDEF;
@@ -71,6 +84,7 @@
 }
 
 [data-theme="classic"] {
+  color-scheme: only light;
   --color-bg: #EFF2F6;
   --color-card: #FFFFFF;
   --color-card-secondary: #E3E9F0;
@@ -88,6 +102,7 @@
 }
 
 [data-theme="serene"] {
+  color-scheme: only light;
   --color-bg: #F4F6F3;
   --color-card: #FFFFFF;
   --color-card-secondary: #EAEFEA;
@@ -105,6 +120,7 @@
 }
 
 [data-theme="parchment"] {
+  color-scheme: only light;
   --color-bg: #F6F1E6;
   --color-card: #FFFDF8;
   --color-card-secondary: #EFE9DA;
@@ -122,6 +138,7 @@
 }
 
 [data-theme="dracula"] {
+  color-scheme: dark;
   --color-bg: #282A36;
   --color-card: #343746;
   --color-card-secondary: #3E4256;
@@ -136,6 +153,63 @@
   --color-wrong-bg: rgba(255, 85, 85, 0.18);
   --color-correct: #50FA7B;
   --color-highlight: #44475A;
+}
+
+/* The mascot is a dark logo on the accent tile, drawn once and never
+   re-coloured: not by a theme, and not by a browser that has decided this
+   "light" page would look nicer dark. The per-element opt-out is what keeps
+   the logo itself out of Auto Dark Theme's reach even if the page-level meta
+   were missed. */
+.brand-mark {
+  color-scheme: only light;
+}
+
+/* ---------- Virtual keyboard material ----------
+   The board is a physical object photographed against the page: dark case,
+   light alpha caps, dark modifier caps with coloured word legends. Those
+   materials never change, so this block is theme-independent — the board looks
+   byte-for-byte identical in every theme, in light and dark browser chrome
+   alike. Only the key the test is waiting for borrows the theme's accent (and
+   the error flash its warning colour), which is why those two tokens resolve
+   `var(--color-accent)` / `var(--color-wrong)` from the html element's
+   cascaded theme values. */
+:root {
+  --kb-plate: #34373f;
+  --kb-plate-lo: #1d1f25;
+  --kb-plate-edge: rgba(0, 0, 0, 0.55);
+  --kb-cap: #f5f5f7;
+  --kb-cap-lo: #c8c9cf;
+  --kb-cap-edge: #9c9da4;
+  --kb-cap-edge-lo: #6f7178;
+  --kb-mod: #363841;
+  --kb-mod-lo: #25272e;
+  --kb-mod-edge: #4c4f59;
+  --kb-mod-edge-lo: #15161b;
+  --kb-label: #1b1c20;
+  --kb-legend-neutral: #d2d4db;
+  --kb-legend-blue: #8fb0f0;
+  --kb-legend-green: #a5de84;
+  --kb-legend-amber: #f5c967;
+  --kb-legend-orange: #ec6440;
+  --kb-skin: #f6c8a0;
+  --kb-ink: #361f15;
+  /* The key the test is waiting for: a pale tint of the theme accent, light
+     enough to keep the cap's dark legend readable on every theme. */
+  --kb-accent: color-mix(in srgb, var(--color-accent) 78%, #ffffff);
+  --kb-accent-lo: color-mix(in srgb, var(--color-accent) 64%, #ffffff);
+  --kb-target-ink: #14161a;
+  --kb-wrong: color-mix(in srgb, var(--color-wrong) 74%, #ffffff);
+  /* Touch-typing zones, one hue per finger, painted on the caps and the hands. */
+  --kb-zone-lpinky: #f2637a;
+  --kb-zone-lring: #f0913e;
+  --kb-zone-lmiddle: #e3c047;
+  --kb-zone-lindex: #74c465;
+  --kb-zone-rindex: #45c0c4;
+  --kb-zone-rmiddle: #5b9bf0;
+  --kb-zone-rring: #a97bf0;
+  --kb-zone-rpinky: #ee6fc0;
+  --kb-zone-lthumb: #9aa3b2;
+  --kb-zone-rthumb: #9aa3b2;
 }
 
 html, body {
@@ -239,311 +313,171 @@ html, body {
   display: none;
 }
 
-/* ---------- Virtual Keyboard ---------- */
+/* ---------- Virtual keyboard ----------
+   Vector board only — every colour comes from the --kb-* tokens above. The
+   board's materials are the same in every theme; only the target cap is themed. */
 
-/* Material tokens. Everything derives from the active theme, so the board
-   re-skins itself on every theme change — no hard-coded colors in components.
-   Fallbacks first, richer color-mix blends where supported. */
-.vk-svg {
-  --vk-cap-hi: var(--color-card-secondary);
-  --vk-cap-lo: var(--color-border);
-  --vk-cap-rim: var(--color-border);
-  --vk-cap-side: var(--color-border);
-  --vk-mod-hi: var(--color-card);
-  --vk-mod-lo: var(--color-border);
-  --vk-legend: var(--color-text-muted);
-  --vk-legend-dim: var(--color-text-dim);
-  --vk-on-accent: var(--color-bg);
-  --vk-skin: var(--color-text-muted);
-  --vk-skin-hi: var(--color-text);
-  --vk-skin-edge: var(--color-text-dim);
-  --vk-bone: var(--color-text);
-  --vk-bone-edge: var(--color-text-dim);
-}
-@supports (color: color-mix(in srgb, red 50%, blue)) {
-  .vk-svg {
-    /* Near-black letter caps, lighter gray modifier caps — the reference pair. */
-    --vk-cap-hi: color-mix(in srgb, var(--color-card-secondary) 40%, black 60%);
-    --vk-cap-lo: color-mix(in srgb, var(--color-card-secondary) 22%, black 78%);
-    --vk-cap-rim: color-mix(in srgb, black 74%, var(--color-border) 26%);
-    --vk-cap-side: color-mix(in srgb, black 82%, var(--color-border) 18%);
-    --vk-mod-hi: color-mix(in srgb, var(--color-border) 62%, black 38%);
-    --vk-mod-lo: color-mix(in srgb, var(--color-border) 40%, black 60%);
-    --vk-legend: color-mix(in srgb, var(--color-text) 90%, white 10%);
-    --vk-legend-dim: color-mix(in srgb, var(--color-text-muted) 78%, white 22%);
-    --vk-on-accent: color-mix(in srgb, black 84%, var(--color-accent) 16%);
-    /* Dusty-rose flesh, lit from above with a soft sheen and deep occlusion
-       edge; translucent enough for keys to read through, like the reference. */
-    --vk-skin: color-mix(in srgb, #8e6b64 72%, var(--color-text) 8%);
-    --vk-skin-hi: color-mix(in srgb, #b9988b 62%, var(--color-text) 10%);
-    --vk-skin-edge: color-mix(in srgb, #3f2d29 68%, var(--color-text) 6%);
-    --vk-bone: color-mix(in srgb, #f3ede0 80%, var(--color-text) 20%);
-    --vk-bone-edge: color-mix(in srgb, #7a6a52 32%, var(--vk-bone) 68%);
-  }
-}
-
-/* Key material: a gradient face lit from above plus a darker skirt (side
-   wall) peeking out at the bottom — real depth instead of a flat rectangle. */
-.vk-key-cap-face {
-  fill: url(#vkCapGrad);
-  stroke: var(--vk-cap-rim);
-  stroke-width: 0.02;
-  transition: fill 0.15s ease, stroke 0.15s ease;
-}
-.vk-key-cap-side {
-  fill: var(--vk-cap-side);
-  opacity: 0.9;
-  transition: fill 0.15s ease;
-}
-.vk-key-label,
-.vk-key-sub {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+.kb-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
   pointer-events: none;
-  transition: fill 0.15s ease;
-}
-.vk-key-label { fill: var(--vk-legend); }
-.vk-key-sub { fill: var(--vk-legend-dim); }
-.vk-home-bar { fill: var(--color-text-dim); opacity: 0.45; }
-.vk-halo { fill: var(--color-accent); opacity: 0.1; animation: vkPulse 1.6s ease-in-out infinite; }
-
-/* The deck the caps sit on: a subtly raised tray below the keyboard card. */
-.vk-deck {
-  fill: var(--color-card);
-  stroke: var(--color-border);
-  stroke-width: 0.03;
 }
 
-/* Modifier keys: lighter gray material, dimmer legends — the reference pair. */
-.vk-mod .vk-key-cap-face { fill: url(#vkModGrad); stroke: var(--vk-cap-rim); }
-.vk-mod .vk-key-cap-side { fill: color-mix(in srgb, var(--vk-cap-side) 70%, white 30%); opacity: 0.9; }
-.vk-mod .vk-key-label { fill: var(--vk-legend-dim); }
-
-/* Target key: solid accent material with its own top-lit gradient. */
-.vk-target .vk-key-cap-face { fill: url(#vkAccentGrad); stroke: var(--color-accent-hover); }
-.vk-target .vk-key-cap-side { fill: var(--color-accent); opacity: 0.7; }
-.vk-target .vk-key-label,
-.vk-target .vk-key-sub { fill: var(--vk-on-accent); }
-/* Physical press: accent material too (the JS spring drives the dip). */
-.vk-pressed .vk-key-cap-face { fill: url(#vkAccentGrad); }
-.vk-pressed .vk-key-cap-side { fill: var(--color-accent); opacity: 0.8; }
-.vk-pressed .vk-key-label,
-.vk-pressed .vk-key-sub { fill: var(--vk-on-accent); }
-.vk-err .vk-key-cap-face { fill: url(#vkWrongGrad); stroke: var(--color-wrong); }
-.vk-err .vk-key-cap-side { fill: var(--color-wrong); opacity: 0.7; }
-.vk-err .vk-key-label,
-.vk-err .vk-key-sub { fill: var(--vk-on-accent); }
-
-/* Hand motion is owned entirely by the JS spring — NO CSS transform
-   transitions here: they re-target on every spring frame and cause a
-   pre-press shiver. */
-
-/* Realistic 3D hands: dusty-rose flesh lit from above — sheen top-light,
-   body gradient, contact shadow under the forearm, deep occlusion rim.
-   Translucent over the keys exactly like the reference plate. */
-.vk-hands { filter: none; }
-
-/* Under-silhouette: soft dark grounding below the whole hand. */
-.vk-skin-under { fill: var(--vk-skin-edge); opacity: 0.45; }
-/* Main flesh: vertical gradient from lit sheen to base tone. */
-.vk-skin-fill {
-  fill: url(#vkSkinGrad);
-  fill-opacity: 0.93;
-  filter: url(#vkHandShadow);
+.kb-plate {
+  fill: url(#kbPlateGrad);
+  stroke: var(--kb-plate-edge);
+  stroke-width: 1;
 }
-/* Top sheen: blurred light patch where the knuckles catch the light. */
-.vk-skin-sheen {
-  fill: var(--vk-skin-hi);
-  opacity: 0.26;
+
+/* The cap outline is a gradient so the top edge stays light while the bottom
+   edge darkens, which is what gives the reference caps their soft depth. */
+.kb-key-face,
+.kb-key-zone-rect {
+  transform-box: fill-box;
+  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1);
 }
-/* Silhouette edge: deep occlusion line that sells the volume. */
-.vk-skin-rim {
+
+.kb-key-face {
+  fill: url(#kbCapGrad);
+  stroke: url(#kbCapEdgeGrad);
+  stroke-width: 1.4;
+}
+
+/* Modifiers are dark caps; the space bar and every legend key stay light. */
+.kb-key-mod .kb-key-face {
+  fill: url(#kbModGrad);
+  stroke: url(#kbModEdgeGrad);
+}
+
+.kb-key-label {
+  fill: var(--kb-label);
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.kb-key-sub {
+  font-weight: 500;
+  opacity: 0.74;
+}
+
+/* Coloured word legends, straight from the reference board. */
+.kb-legend-blue .kb-key-label { fill: var(--kb-legend-blue); }
+.kb-legend-green .kb-key-label { fill: var(--kb-legend-green); }
+.kb-legend-amber .kb-key-label { fill: var(--kb-legend-amber); }
+.kb-legend-orange .kb-key-label { fill: var(--kb-legend-orange); }
+.kb-legend-neutral .kb-key-label { fill: var(--kb-legend-neutral); }
+
+/* "Colour zones": every cap takes its finger's hue so the touch-typing map
+   reads at a glance. The target cap keeps its themed highlight instead. */
+.kb-key-zone-rect {
+  fill: var(--zone);
+  opacity: 0.78;
+}
+
+/* The only highlighted cap: the key the test is waiting for. */
+.kb-key-halo {
   fill: none;
-  stroke: var(--vk-skin-edge);
-  stroke-opacity: 0.5;
-  stroke-width: 0.045;
-}
-/* Per-segment flesh: each capsule carries its own shading stack — dark rim
-   stroke under the body (occlusion), gradient body, blurred sheen band. */
-.vk-capsule-rim {
-  fill: none;
-  stroke: var(--vk-skin-edge);
-  stroke-opacity: 0.5;
-}
-.vk-capsule {
-  fill: url(#vkSkinGrad);
-  fill-opacity: 0.94;
-}
-.vk-capsule-down { fill-opacity: 1; }
-.vk-capsule-sheen { fill: var(--vk-skin-hi); opacity: 0.55; }
-.vk-nail {
-  fill: var(--vk-skin-hi);
-  opacity: 0.4;
-}
-.vk-wrist-crease {
-  fill: none;
-  stroke: var(--vk-skin-edge);
-  stroke-opacity: 0.4;
-  stroke-width: 0.035;
+  stroke: var(--color-accent);
+  stroke-width: 2.4;
+  opacity: 0.5;
 }
 
-
-/* The skeleton: faint ivory bones with a warm edge, tinted per finger in
-   zones mode. Secondary under the flesh — visible, not dominant. */
-.vk-bone { will-change: transform; }
-.vk-bone-shape {
-  fill: var(--vk-bone);
-  fill-opacity: 0.34;
-  stroke: var(--vk-bone-edge);
-  stroke-opacity: 0.4;
-  stroke-width: 0.016;
-}
-.vk-condyle {
-  fill: url(#vkBulb);
-  stroke: var(--vk-bone-edge);
-  stroke-opacity: 0.3;
-  stroke-width: 0.012;
-}
-.vk-carpal {
-  fill: url(#vkBulb);
-  stroke: var(--vk-bone-edge);
-  stroke-opacity: 0.28;
-  stroke-width: 0.012;
+.kb-key-target .kb-key-face {
+  fill: url(#kbAccentGrad);
+  stroke: var(--color-accent);
+  stroke-width: 1.6;
 }
 
-/* Light themes: sunlit skin, ivory bones with a deeper edge for contrast,
-   pale modifier caps and dark legends — the classic light board look. */
-[data-theme="default-light"], [data-theme="classic"],
-[data-theme="serene"], [data-theme="parchment"] {
-  .vk-svg {
-    --vk-cap-hi: color-mix(in srgb, var(--color-card-secondary) 45%, white 55%);
-    --vk-cap-lo: var(--color-card-secondary);
-    --vk-cap-rim: var(--color-border);
-    --vk-cap-side: color-mix(in srgb, var(--color-border) 80%, black 20%);
-    --vk-mod-hi: color-mix(in srgb, var(--color-card) 60%, var(--color-border) 40%);
-    --vk-mod-lo: var(--color-border);
-    --vk-legend: color-mix(in srgb, var(--color-text) 92%, black 8%);
-    --vk-legend-dim: var(--color-text-muted);
-    --vk-skin: #d8a889;
-    --vk-skin-hi: #ecc7a8;
-    --vk-skin-edge: #8a5f47;
-    --vk-bone: #FAF5E9;
-    --vk-bone-edge: #8A7355;
+.kb-key-target .kb-key-label {
+  fill: var(--kb-target-ink);
+}
+
+/* Momentary feedback on the key that was just struck. */
+.kb-key-down .kb-key-face,
+.kb-key-down .kb-key-zone-rect {
+  transform: translateY(2.2px);
+}
+
+.kb-key-err .kb-key-face {
+  fill: var(--kb-wrong);
+  stroke: var(--color-wrong);
+}
+
+/* The zone wash sits above the cap, so it has to carry the error tint too. */
+.kb-key-err .kb-key-zone-rect {
+  fill: var(--kb-wrong);
+  opacity: 0.9;
+}
+
+.kb-key-err .kb-key-label {
+  fill: var(--kb-target-ink);
+}
+
+.hand-outer {
+  fill: var(--kb-ink);
+  shape-rendering: geometricPrecision;
+}
+
+.hand-skin {
+  fill: var(--kb-skin);
+  shape-rendering: geometricPrecision;
+}
+
+/* The typing rig: the hands are cut into a palm and one piece per finger, and
+   every piece is one transform away from its rest pose (see utils/handPose.ts).
+   transform-box: view-box keeps those matrices in the drawing's own units.
+
+   Nothing here transitions them: TypingHands.tsx springs every joint and writes
+   the transform attribute on each frame, so a CSS transition would only add a
+   second, laggier easing on top of the movement. */
+.kb-hand,
+.kb-finger {
+  transform-box: view-box;
+  transform-origin: 0 0;
+}
+
+/* The finger that owns the key the test is waiting for. The cap highlight and
+   this are the same theme accent, so the board and the hands agree on which
+   finger is next. It is the hand's own body path cut to that finger's own traced
+   outline (utils/handRig.ts), which means the outline, the seams and every
+   neighbouring finger are holes in it: the wash can only ever cover that one
+   finger's skin, and the finger keeps its dark edges.
+
+   It multiplies rather than tints. A wash mixed towards white sits a shade or
+   two off the skin for any accent that is already warm — ember's is within a
+   hair of it — so those themes lose the finger entirely. Multiplying can only
+   ever darken, so the tint is a shadow of the accent and separates from the
+   light skin whatever hue it is, including a custom one: the theme colour is
+   the user's to pick. */
+.hand-target {
+  fill: var(--color-accent);
+  fill-opacity: 0.7;
+  mix-blend-mode: multiply;
+  shape-rendering: geometricPrecision;
+}
+
+/* Fingertip markers: the same zone hues, printed on the finger that owns them. */
+.hand-zone {
+  fill: var(--zone, transparent);
+  fill-opacity: 0.42;
+  stroke: var(--zone, transparent);
+  stroke-opacity: 0.7;
+  stroke-width: 1.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kb-key-face,
+  .kb-key-zone-rect {
+    transition: none;
   }
-  .vk-bone-shape { stroke-opacity: 0.6; }
-  .vk-skin-under { opacity: 0.3; }
+  .kb-key-down .kb-key-face,
+  .kb-key-down .kb-key-zone-rect {
+    transform: none;
+  }
 }
-
-/* Optional per-finger color zones */
-.vk-zones .vk-bone-shape,
-.vk-zones .vk-condyle,
-.vk-zones .vk-carpal {
-  fill: var(--finger-color, var(--vk-bone));
-  stroke: var(--finger-color, var(--vk-bone));
-}
-.vk-zones .vk-bone-shape { fill-opacity: 0.42; }
-
-/* The finger guiding you to the next key floods with the accent color —
-   skin, sheen and edge together, matching the highlighted key. */
-.vk-finger-target .vk-capsule { fill: var(--color-accent); fill-opacity: 0.92; }
-.vk-finger-target .vk-capsule-sheen { fill: var(--color-accent-hover); opacity: 0.6; }
-.vk-finger-target .vk-capsule-rim { stroke: var(--color-accent); stroke-opacity: 0.9; }
-.vk-finger-target .vk-bone-shape {
-  fill: var(--color-accent);
-  fill-opacity: 0.55;
-  stroke: var(--color-accent);
-  stroke-opacity: 0.95;
-}
-.vk-finger-target .vk-condyle {
-  fill: var(--color-accent);
-  fill-opacity: 0.65;
-  stroke: var(--color-accent);
-}
-
-/* Finger "click" while a key is physically pressed */
-.vk-finger-pressed .vk-bone-shape { fill-opacity: 1; }
-.vk-finger-pressed .vk-condyle { fill-opacity: 0.85; }
-
-/* Whole-hand dip on every keystroke, like weight going into the key */
-.vk-dip-a { animation: vkDipA 0.14s ease-out; }
-.vk-dip-b { animation: vkDipB 0.14s ease-out; }
-@keyframes vkDipA {
-  0% { transform: translateY(0); }
-  45% { transform: translateY(0.07px); }
-  100% { transform: translateY(0); }
-}
-@keyframes vkDipB {
-  0% { transform: translateY(0); }
-  45% { transform: translateY(0.07px); }
-  100% { transform: translateY(0); }
-}
-
-/* Gentle idle breathing so the hands feel alive */
-.vk-breathe { animation: vkBreathe 4.5s ease-in-out infinite; }
-@keyframes vkBreathe {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-0.04px); }
-}
-
-/* Translucent "x-ray" echo of highlighted keys, drawn above the hands
-   so the key and its label stay clearly visible through the bones. */
-.vk-echo-cap {
-  fill: var(--color-accent);
-  fill-opacity: 0.16;
-  stroke: var(--color-accent);
-  stroke-opacity: 0.75;
-  stroke-width: 0.045;
-}
-.vk-echo .vk-key-label,
-.vk-echo .vk-key-sub { fill: var(--color-accent); }
-.vk-echo-halo { fill: var(--color-accent); opacity: 0.1; animation: vkPulse 1.6s ease-in-out infinite; }
-
-/* Error jolt: a short, tight head-shake — only plays on a wrong key, and the
-   keyed <g> remount guarantees it restarts fresh every time. */
-.vk-shake-a { animation: vkShakeA 0.24s ease-out 1; }
-.vk-shake-b { animation: vkShakeB 0.24s ease-out 1; }
-
-@keyframes vkPulse {
-  0%, 100% { opacity: 0.08; }
-  50% { opacity: 0.28; }
-}
-
-@keyframes vkShakeA {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(0.11px); }
-  50% { transform: translateX(-0.09px); }
-  75% { transform: translateX(0.05px); }
-}
-
-@keyframes vkShakeB {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-0.09px); }
-  50% { transform: translateX(0.11px); }
-  75% { transform: translateX(-0.05px); }
-}
-
-/* Mini toggle switch used by the Keyboard Settings popover */
-.vk-switch {
-  width: 30px;
-  height: 17px;
-  border-radius: 999px;
-  background: var(--color-border);
-  position: relative;
-  flex-shrink: 0;
-  transition: background 0.18s ease;
-}
-.vk-switch.on { background: var(--color-accent); }
-.vk-knob {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: var(--color-card);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.18s ease;
-}
-.vk-switch.on .vk-knob { transform: translateX(13px); background: #ffffff; }
 
 /* ---------- Motion system ----------
    One shared vocabulary: tokens for easing/duration, a handful of keyframes,
@@ -639,10 +573,7 @@ html, body {
   .word-flash-bad,
   .chart-line,
   .chart-fade-late,
-  .caret-pulse,
-  .vk-breathe,
-  .vk-halo,
-  .vk-echo-halo {
+  .caret-pulse {
     animation: none !important;
   }
   .chart-line { stroke-dasharray: none !important; stroke-dashoffset: 0 !important; }
